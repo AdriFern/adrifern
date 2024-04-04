@@ -1,6 +1,6 @@
 # Welcome to My GitHub Profile! 🌟
 
-Hi there! I'm Adrian Fernandez, aka @adrifern, the Marketing Manager for GitHub Education. Welcome to my little corner, where creativity meets education and marketing magic happens!
+Hi there! I'm Adrian Fernandez, aka @adrifern, the Marketing Manager for GitHub Education.
 
 ## About Me
 ![ezgif com-resize](https://github.com/AdriFern/adrifern/assets/107892368/9cd54220-1e9a-4686-ac89-c560d03dbbb3)
