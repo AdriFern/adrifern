@@ -4,7 +4,7 @@ I'm Adrian Fernandez, aka @adrifern, the Marketing Manager for GitHub Education.
 ## About Me
 ![Profile Picture](https://github.com/AdriFern/adrifern/assets/107892368/9cd54220-1e9a-4686-ac89-c560d03dbbb3)
 
-I enjoy working in marketing and communication, focusing on strategy and creativity to support growth and bring ideas to life.
+I enjoy working in marketing and communication, focusing on strategy, improving processes and creativity to support growth and bring ideas to life.
 
 ## What's in My Toolbox? 🧰
 
