@@ -8,7 +8,7 @@ I enjoy working in marketing and communication, focusing on strategy and creativ
 
 ## What's in My Toolbox? 🧰
 
-- **Marketing Expertise**: Social media campaigns, email marketing, content creation, project management, design.
+- **Marketing Expertise**: Social media campaigns, email marketing, content creation, project management, editorial and design.
 - **Analytical Skills**: Tracking, reporting, testing, metrics, and analytics.
 - **Tools**: I use a mix of the latest tech and traditional tools.
 
