@@ -17,8 +17,8 @@ I enjoy working in marketing and communication, focusing on strategy, improving 
 Some of the projects I'm currently involved in:
 
 - Social media and email marketing
-- Media strategies (owned and paid)
-- Managing earned media
+- Media strategies (owned, earned and paid)
+- Managing marketing websites
 - Reporting and analytics
 - Campaign testing and optimization
 
