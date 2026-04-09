@@ -1,0 +1,389 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BB000001CC000001DD000001 /* VanConfiguratorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001BB000001CC000001 /* VanConfiguratorApp.swift */; };
+		BB000002CC000002DD000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002BB000002CC000002 /* Models.swift */; };
+		BB000003CC000003DD000003 /* ConfigViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003BB000003CC000003 /* ConfigViewModel.swift */; };
+		BB000004CC000004DD000004 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000004BB000004CC000004 /* ContentView.swift */; };
+		BB000005CC000005DD000005 /* LayoutEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000005BB000005CC000005 /* LayoutEditorView.swift */; };
+		BB000006CC000006DD000006 /* VanCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000006BB000006CC000006 /* VanCanvasView.swift */; };
+		BB000007CC000007DD000007 /* VanOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000007BB000007CC000007 /* VanOutlineView.swift */; };
+		BB000008CC000008DD000008 /* PlacedElementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000008BB000008CC000008 /* PlacedElementView.swift */; };
+		BB000009CC000009DD000009 /* ElementPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000009BB000009CC000009 /* ElementPaletteView.swift */; };
+		BB000010CC000010DD000010 /* ElementPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000010BB000010CC000010 /* ElementPreviewView.swift */; };
+		BB000011CC000011DD000011 /* ElementConfigSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000011BB000011CC000011 /* ElementConfigSheet.swift */; };
+		BB000012CC000012DD000012 /* ElementEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000012BB000012CC000012 /* ElementEditSheet.swift */; };
+		BB000013CC000013DD000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA000013BB000013CC000013 /* Assets.xcassets */; };
+		BB000014CC000014DD000014 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA000014BB000014CC000014 /* Preview Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AA000001BB000001CC000001 /* VanConfiguratorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VanConfiguratorApp.swift; sourceTree = "<group>"; };
+		AA000002BB000002CC000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		AA000003BB000003CC000003 /* ConfigViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigViewModel.swift; sourceTree = "<group>"; };
+		AA000004BB000004CC000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA000005BB000005CC000005 /* LayoutEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutEditorView.swift; sourceTree = "<group>"; };
+		AA000006BB000006CC000006 /* VanCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VanCanvasView.swift; sourceTree = "<group>"; };
+		AA000007BB000007CC000007 /* VanOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VanOutlineView.swift; sourceTree = "<group>"; };
+		AA000008BB000008CC000008 /* PlacedElementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacedElementView.swift; sourceTree = "<group>"; };
+		AA000009BB000009CC000009 /* ElementPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementPaletteView.swift; sourceTree = "<group>"; };
+		AA000010BB000010CC000010 /* ElementPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementPreviewView.swift; sourceTree = "<group>"; };
+		AA000011BB000011CC000011 /* ElementConfigSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementConfigSheet.swift; sourceTree = "<group>"; };
+		AA000012BB000012CC000012 /* ElementEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementEditSheet.swift; sourceTree = "<group>"; };
+		AA000013BB000013CC000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA000014BB000014CC000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		AA000015BB000015CC000015 /* VanConfigurator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VanConfigurator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DD000003EE000003FF000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		CC000001DD000001EE000001 = {
+			isa = PBXGroup;
+			children = (
+				CC000002DD000002EE000002 /* VanConfigurator */,
+				CC000003DD000003EE000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CC000002DD000002EE000002 /* VanConfigurator */ = {
+			isa = PBXGroup;
+			children = (
+				AA000001BB000001CC000001 /* VanConfiguratorApp.swift */,
+				AA000002BB000002CC000002 /* Models.swift */,
+				AA000003BB000003CC000003 /* ConfigViewModel.swift */,
+				AA000004BB000004CC000004 /* ContentView.swift */,
+				AA000005BB000005CC000005 /* LayoutEditorView.swift */,
+				AA000006BB000006CC000006 /* VanCanvasView.swift */,
+				AA000007BB000007CC000007 /* VanOutlineView.swift */,
+				AA000008BB000008CC000008 /* PlacedElementView.swift */,
+				AA000009BB000009CC000009 /* ElementPaletteView.swift */,
+				AA000010BB000010CC000010 /* ElementPreviewView.swift */,
+				AA000011BB000011CC000011 /* ElementConfigSheet.swift */,
+				AA000012BB000012CC000012 /* ElementEditSheet.swift */,
+				AA000013BB000013CC000013 /* Assets.xcassets */,
+				CC000004DD000004EE000004 /* Preview Content */,
+			);
+			path = VanConfigurator;
+			sourceTree = "<group>";
+		};
+		CC000003DD000003EE000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA000015BB000015CC000015 /* VanConfigurator.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CC000004DD000004EE000004 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				AA000014BB000014CC000014 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EE000001FF000001AA111111 /* VanConfigurator */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AABBCCDD00000000F0000002 /* Build configuration list for PBXNativeTarget "VanConfigurator" */;
+			buildPhases = (
+				DD000001EE000001FF000001 /* Sources */,
+				DD000002EE000002FF000002 /* Resources */,
+				DD000003EE000003FF000003 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VanConfigurator;
+			productName = VanConfigurator;
+			productReference = AA000015BB000015CC000015 /* VanConfigurator.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FF000001AA111111BB222222 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					EE000001FF000001AA111111 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = AABBCCDD00000000F0000001 /* Build configuration list for PBXProject "VanConfigurator" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = CC000001DD000001EE000001;
+			productRefGroup = CC000003DD000003EE000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EE000001FF000001AA111111 /* VanConfigurator */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DD000002EE000002FF000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB000013CC000013DD000013 /* Assets.xcassets in Resources */,
+				BB000014CC000014DD000014 /* Preview Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DD000001EE000001FF000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB000001CC000001DD000001 /* VanConfiguratorApp.swift in Sources */,
+				BB000002CC000002DD000002 /* Models.swift in Sources */,
+				BB000003CC000003DD000003 /* ConfigViewModel.swift in Sources */,
+				BB000004CC000004DD000004 /* ContentView.swift in Sources */,
+				BB000005CC000005DD000005 /* LayoutEditorView.swift in Sources */,
+				BB000006CC000006DD000006 /* VanCanvasView.swift in Sources */,
+				BB000007CC000007DD000007 /* VanOutlineView.swift in Sources */,
+				BB000008CC000008DD000008 /* PlacedElementView.swift in Sources */,
+				BB000009CC000009DD000009 /* ElementPaletteView.swift in Sources */,
+				BB000010CC000010DD000010 /* ElementPreviewView.swift in Sources */,
+				BB000011CC000011DD000011 /* ElementConfigSheet.swift in Sources */,
+				BB000012CC000012DD000012 /* ElementEditSheet.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AABBCCDD00000000E0000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AABBCCDD00000000E0000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AABBCCDD00000000E0000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"VanConfigurator/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Van Configurator";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrifern.VanConfigurator;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		AABBCCDD00000000E0000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"VanConfigurator/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Van Configurator";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrifern.VanConfigurator;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AABBCCDD00000000F0000001 /* Build configuration list for PBXProject "VanConfigurator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AABBCCDD00000000E0000001 /* Debug */,
+				AABBCCDD00000000E0000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AABBCCDD00000000F0000002 /* Build configuration list for PBXNativeTarget "VanConfigurator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AABBCCDD00000000E0000003 /* Debug */,
+				AABBCCDD00000000E0000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = FF000001AA111111BB222222 /* Project object */;
+}
