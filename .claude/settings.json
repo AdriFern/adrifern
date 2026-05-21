@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Asana__*",
+      "mcp__Google-Calendar__*",
+      "mcp__Gmail__*",
+      "mcp__Google-Drive__*",
+      "Bash",
+      "Read",
+      "Write",
+      "Edit"
+    ]
+  }
+}
