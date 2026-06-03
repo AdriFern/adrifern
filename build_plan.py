@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Builds Plan v11 HTML (rendered to PDF by wkhtmltopdf).
 import os
-from budget_tables import summary_table, month_table, menu_table, search_rows, search_total, social_rows, social_total
+from budget_tables import summary_table, month_table, menu_table, paths_table_full, search_rows, search_total, social_rows, social_total
 
 CSS = open('doc_style.css').read()
 DEFS = ('<div class="tag-defs">Paid Search = Google + Microsoft/Bing. Paid Social = LinkedIn + Meta. The shape follows the season: '
@@ -21,7 +21,7 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 
 <div class="byline">ADRIAN FERNANDEZ | MAPAL GROUP | PAID MEDIA &amp; LIFECYCLE</div>
 <h1>PPC and Nurture: Executive Summary</h1>
-<div class="byline">Version 11 | 3 June 2026</div>
+<div class="byline">Version 12 | 3 June 2026</div>
 <hr class="rule">
 
 <h3>The one-page version</h3>
@@ -39,7 +39,7 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <h3>How we measure success</h3>
 <p>Judged on pipeline, not platform-reported clicks. HubSpot pipeline, closed-loop through the offline conversion upload, is the scoreboard.</p>
 <table><thead><tr><th>Metric</th><th>Role</th></tr></thead><tbody>
-<tr><td>Cost per lead, by channel and market</td><td>Launch-phase efficiency gate (native social forms ran 26 to 55 euros; ceilings 60 to 90 euros social, 120 to 150 euros search)</td></tr>
+<tr><td>Cost per lead, by channel and market</td><td>Launch-phase efficiency gate. Segment-aware ceilings tied to validated deal value (baseline 60 to 90 euros social, 120 to 150 euros search; native social forms ran 26 to 55), raised only where deal value is proven</td></tr>
 <tr><td>MQL-to-SQL rate</td><td>Lead quality, matters more than volume</td></tr>
 <tr><td>Cost per SQL</td><td>True acquisition efficiency, replaces cost-per-click as the headline</td></tr>
 <tr><td>Pipeline and win rate</td><td>Revenue contribution (paid's trailing-12-month win rate is 15.8%, the baseline to hold or beat)</td></tr>
@@ -50,8 +50,11 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 
 <div class="byline">ADRIAN FERNANDEZ | MAPAL GROUP</div>
 <h1>PPC and Nurture: The Plan</h1>
-<div class="byline">Version 11 | 3 June 2026 | Companion: the per-platform execution document</div>
+<div class="byline">Version 12 | 3 June 2026 | Companion: the per-platform execution document</div>
 <hr class="rule">
+
+<div class="changebox"><span class="tag">WHAT CHANGED IN V12</span>
+<p>Four additions from the council review, no change to the budget numbers. A new section, "Giving buyers a way in that is not a demo", sets a step-down set of tracked conversion paths beside the primary demo CTA, each scored lower and feeding nurture, live only where its tracked conversion and nurture exit exist, with assets owned by web, content and RevOps. Section 5 gains a France segment-and-keyword structure (central kitchens including public institutions, dark kitchens, public sector and education, franchise groups) built as ad groups inside the flagship and split with the SEO manager, reusable as the template for other markets. Section 11 gains a messaging-discipline note (claim only what is true and live per market, lead with substantiated proof, cut generic claims). The interim CPL kill-ceilings become segment-aware and tied to validated ACV, with the conversion values held provisional pending validation by segment.</p></div>
 
 <div class="changebox"><span class="tag">WHAT CHANGED IN V11</span>
 <p>Locked the budget to the firm 110,000 euro June to December floor. Search market totals are held, with reshaping inside campaigns rather than growth. The Mexico line is trimmed to a token and shifted into Iberia LinkedIn, so Iberia social now sits ahead of UK social for the period. Full-year paid is about 254,600 euros, social about 55,800. The "no new budget" headline is dropped in favour of a disciplined base funded by cutting waste that leadership is adding to as the engine proves out; top-ups beyond the floor are staged and deployed only on confirmation. The 45,000 non-recurrent LATAM line is closed and redistributed. The envelope is clarified: the 14,800 trade-media line is SEO and PR owned and out of paid scope. A new section sets out what paid can support for the growth team and the proven play for each.</p></div>
@@ -75,6 +78,7 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <li>6. LinkedIn Ads, by market</li>
 <li>7. Microsoft Ads, by market</li>
 <li>8. Meta Ads, by market</li>
+<li>Giving buyers a way in that is not a demo</li>
 <li>9. The nurture engine paid feeds into</li>
 <li>10. The expansion engine: cross-sell and up-sell</li>
 <li>11. Creative and testing</li>
@@ -109,8 +113,8 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <tr><td>Lead form (social)</td><td>Maximize leads / lowest cost</td><td>Cost cap once we have a cost-per-lead baseline</td></tr>
 <tr><td>Remarketing</td><td>Manual or cost cap, small budget</td><td>Conversion-based once audiences are populated</td></tr>
 </tbody></table>
-<p><strong>Interim guardrails (set at launch).</strong> Max CPC brand UK 2 to 3 pounds, ES and FR 2 to 3 euros; max CPC flagship search 6 to 9 euros by market; cost-per-lead ceiling 120 to 150 euros search, 60 to 90 euros social (native forms ran 26 to 55 in the audit); switch to conversion bidding at 30+ Lead MQLs per campaign per 30 days.</p>
-<p><strong>Value-based bidding.</strong> Ours is a considered, low-volume purchase, so we optimise for lead value, pushing a value back to the platform as each lead moves through the funnel: MQL 500 euros, SQL 2,000 euros, Opportunity 10,000 euros, Closed Won 25,000 euros. It works even when a campaign cannot hit 30 conversions a month. Prerequisites (all in section 14): offline conversion upload on, MQL set automatically, and the LinkedIn click ID plus UTMs captured on every form.</p>
+<p><strong>Interim guardrails (set at launch).</strong> Max CPC brand UK 2 to 3 pounds, ES and FR 2 to 3 euros; max CPC flagship search 6 to 9 euros by market; switch to conversion bidding at 30+ Lead MQLs per campaign per 30 days. The cost-per-lead kill-ceiling is segment-aware and tied to expected deal value, not flat: a single-site lead and a franchise-group or multi-site lead do not warrant the same ceiling, and the ceiling is raised only where deal value is validated. The baseline is 120 to 150 euros search and 60 to 90 euros social (native forms ran 26 to 55 in the audit). We validate the offline conversion values against real ACV by segment (single-site, franchise or group, enterprise) with RevOps and sales; if multi-site and enterprise ACV is materially higher than the modelled values, we raise both the conversion values and the CPL tolerance for those segments, while still judging on incremental lift rather than platform-reported conversions.</p>
+<p><strong>Value-based bidding.</strong> Ours is a considered, low-volume purchase, so we optimise for lead value, pushing a value back to the platform as each lead moves through the funnel: MQL 500 euros, SQL 2,000 euros, Opportunity 10,000 euros, Closed Won 25,000 euros (these values are provisional, pending validation against real ACV by segment). It works even when a campaign cannot hit 30 conversions a month. Prerequisites (all in section 14): offline conversion upload on, MQL set automatically, and the LinkedIn click ID plus UTMs captured on every form.</p>
 <p><strong>Attribution windows.</strong> Senior hospitality buyers do not convert in one session, so we set a 30-day click-through window across platforms, with view-through handled conservatively.</p>
 <p><strong>Audiences: broad but correct.</strong> No always-on social audience runs below 50,000, the platform's delivery threshold. Narrow hand-built lists starve the algorithm, which the audit proved on LinkedIn (a 3,400 list produced zero leads against a 22,000 audience that worked). Narrow, named-account targeting moves to sales sequencing, not paid. Every campaign suppresses existing MQLs and above, the titles Student, Intern and Assistant, companies under 20 employees, current customers and open opportunities, and clearly wrong verticals.</p>
 
@@ -157,6 +161,17 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <tr><td>FR-CC-Easilys-Retarget-AlwaysOn-Q226</td><td>Display remarketing. Small budget</td><td>Remarketing plus the Flow retargeting-led brand build. FR exclusion lists attached.</td><td>Lead MQL</td></tr>
 </tbody></table>
 <div class="callout"><strong>Tracking prerequisite, FR conversions (ours).</strong> The FR conversion layer needs a cleanup in the Google Ads UI (29 actions, 18 removed, 4 still flagged primary). This is ours to do and must finish before FR switches to conversion bidding. Until then, FR runs on Maximize Clicks with caps.</div>
+<h3>France: segment and keyword structure</h3>
+<p>Segment intelligence is built as tightly-themed ad groups and a shared keyword universe inside the flagship campaigns, not as new campaigns, so we keep the consolidated structure and stay above learning thresholds. The FR Easilys segment layers to build as ad groups within the FR Easilys flagship, each with its own matched high-intent terms and segment-specific messaging:</p>
+<ul>
+<li>Central production kitchens that cater to their own sites and franchises (a priority French theme, including public institutions that run central kitchens)</li>
+<li>Dark kitchens and delivery-only kitchens</li>
+<li>Public sector and education (school and institutional catering)</li>
+<li>Commercial and franchise groups</li>
+</ul>
+<p>Across all French campaigns, and as a standing rule for future builds, we target the group, franchise and multi-site decision-makers (operations, procurement and food-and-beverage directors), not only the single-site owner.</p>
+<p>This keyword universe is built jointly with the SEO manager as one shared map. The SEO manager owns the informational, category and regulatory or law-driven content layers (organic, refreshed per market, country and product). Paid owns the high-intent commercial, comparison and brand layers. Paid does not bid on terms SEO already ranks for cheaply unless there is a brand-defence or incrementality case.</p>
+<p>This segment and keyword structure is the standing reference for building future French campaigns and the template for the other markets, captured as a keyword-universe-by-market-and-product matrix that new campaigns draw from.</p>
 
 <h2>6. LinkedIn Ads, by market</h2>
 <p><em>Short version: three campaigns per market, broad audiences, native lead forms. Broad wins; narrow lists do not.</em></p>
@@ -189,6 +204,20 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <tr><td>{{REGION}}-{{ICP}}-{{PRODUCT}}-Demand-Video-Q226</td><td>Demand Gen / video, inside the lead-form structure</td><td>The growth-team video runs here, where it converts, not as standalone awareness.</td><td>Lead</td></tr>
 </tbody></table>
 <div class="callout"><strong>Tracking prerequisite, Meta pixel (ours).</strong> The main pixel was dead about 27 days and four others are inactive. Restoring the main pixel, deleting the four zombie pixels, and confirming Lead and Lead_SQL fire are ours, in Events Manager, before remarketing or conversion bidding. Section 14.</div>
+
+<h2>Giving buyers a way in that is not a demo</h2>
+<p>The demo request stays our primary call to action. But not every buyer will book a thirty-minute sales call, especially in Iberia and France, and most are not ready to buy on first touch. So beside "book a demo" we offer a step-down set of lower-commitment conversion points that capture the lead into nurture and warm it toward a demo over time.</p>
+<h4>Conversion paths</h4>
+{paths_table_full()}
+<h4>How we keep this disciplined</h4>
+<ul>
+<li>The demo stays the primary call to action. The alternatives are a step-down beside it, not equal competitors, so they do not cannibalise demo requests.</li>
+<li>Each alternative is its own tracked conversion with a value lower than a demo, so bidding never optimises toward the cheapest, lowest-intent form-fill.</li>
+<li>Alternative-path leads feed nurture, scored lower than a demo request, and are handed to sales only once nurture qualifies them. This protects the SDR team, which is running below target.</li>
+<li>A path goes live only where its tracked conversion and its nurture exit exist. Until then it is planned, not live.</li>
+<li>The assets themselves (simulator, quote flow, brochure, gated content) are produced by the web, content and RevOps teams. Paid uses them as conversion points and distributes them; paid does not own asset production.</li>
+</ul>
+<p>This extends the paid support menu, where the webinar and gated-content plays already sit, and plugs directly into the lifecycle build in section 9: every alternative path is a nurture entry, not a fast track to an SDR.</p>
 
 <h2>9. The nurture engine paid feeds into</h2>
 <p><em>Short version: paid brings the lead in, nurture turns it into a deal. Today most leads go cold. This fixes that.</em></p>
@@ -223,6 +252,13 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <h2>11. Creative and testing</h2>
 <p><em>Short version: a few strong, tested angles per product beats a pile of one-off ads.</em></p>
 <p>Ads lead with the reader's problem, then how we solve it, then proof. Flow (UK, hotels) leads on training that turns into consistent on-shift behaviour and the cost of staff turnover, with the training-gap creative and hotel stories. Workforce (Iberia) leads on labour cost and scheduling on the HR angle, with the proven ES forms and same-size local proof. Easilys (France) leads on food-cost control and kitchen and procurement efficiency, with the document/whitepaper pattern and public-sector references. Compliance (UK secondary) leads on compliance-gap closure and audit-readiness for enterprise hotels. We test one thing at a time (the V## in the name tracks the version), judge on the funnel not the click, refresh on fatigue, and source creative through the intake form.</p>
+<h3>Messaging discipline</h3>
+<ul>
+<li>Claim only what is true and live for that product in that market. Do not promote a product or feature that is not the play in that market, and do not overstate feature scope. This ties messaging to the product-market map.</li>
+<li>Lead with social proof and authority (named customers, outcomes, sector statistics) wherever we can substantiate it. Flag proof gaps to the content and PR teams rather than inventing claims.</li>
+<li>Cut generic claims that every competitor makes and none would deny, such as "easy to use" or "all in one". Replace them with specific, substantiated feature angles (for example the Easilys equipment-renovation and food-waste-prevention angles) that actually differentiate.</li>
+<li>Avoid unsubstantiated superiority claims, which carry competitive and legal risk in some markets.</li>
+</ul>
 
 <h2>12. How we measure success</h2>
 <p><em>Short version: we judge spend on pipeline, not platform-reported clicks. HubSpot pipeline is the truth.</em></p>
@@ -320,5 +356,5 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style>
 </body></html>"""
 
 os.makedirs('build', exist_ok=True)
-open('build/plan_v11.html','w').write(HTML)
+open('build/plan_v12.html','w').write(HTML)
 print('plan HTML written', len(HTML), 'chars')

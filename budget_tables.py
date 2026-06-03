@@ -65,3 +65,39 @@ def menu_table():
         out.append(f'<tr><td>{a}</td><td>{b}</td><td>{c}</td></tr>')
     out.append('</tbody></table>')
     return ''.join(out)
+
+# ---- demo-alternative conversion paths (Path | What it is | Who it is for | Judged on) ----
+conversion_paths = [
+    ('Book a demo (primary)',
+     'The existing high-intent call to action',
+     'Buyers ready to talk to sales',
+     'SQL and pipeline'),
+    ('ROI or savings simulator',
+     'An interactive tool that estimates the saving from the relevant product, gated to capture the lead',
+     'Buyers who want proof of value before a call',
+     'Downstream SQL and pipeline'),
+    ('Gated content (ebook, whitepaper, research)',
+     'A substantive asset relevant to the market and ICP, behind a Lead Gen Form',
+     'Early-stage buyers researching the problem',
+     'Cost per lead, MQL rate, then nurture progression'),
+    ('PDF brochure download',
+     'The product brochure, gated',
+     'Buyers who want detail without a call',
+     'Cost per lead, nurture progression'),
+    ('Request a quote',
+     'A short pricing or quote request form',
+     'Buyers closer to a decision who are price-checking',
+     'SQL and opportunity rate'),
+]
+def paths_table_full():
+    out = ['<table><thead><tr><th>Path</th><th>What it is</th><th>Who it is for</th><th>Judged on</th></tr></thead><tbody>']
+    for a,b,c,d in conversion_paths:
+        out.append(f'<tr><td>{a}</td><td>{b}</td><td>{c}</td><td>{d}</td></tr>')
+    out.append('</tbody></table>')
+    return ''.join(out)
+def paths_table_compact():
+    out = ['<table><thead><tr><th>Path</th><th>Who it is for</th><th>Judged on</th></tr></thead><tbody>']
+    for a,b,c,d in conversion_paths:
+        out.append(f'<tr><td>{a}</td><td>{c}</td><td>{d}</td></tr>')
+    out.append('</tbody></table>')
+    return ''.join(out)

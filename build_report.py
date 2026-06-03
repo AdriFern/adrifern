@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Builds Report v22 HTML (rendered to PDF by wkhtmltopdf).
 import os
+from budget_tables import paths_table_compact
 
 CSS = open('doc_style.css').read()
 
@@ -200,6 +201,11 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <p>Paid does not only find strangers; it turns the growth team's own activity into pipeline. The way it does that is a defined service menu, not a case-by-case scramble: each request type has a proven setup and one metric it is judged on, so supported activity generates pipeline rather than spend. The boundary is simple, search stays evergreen intent capture and is never spent to promote an event or asset, and every supported campaign needs a working conversion and a tracked form in place before it goes live. The compact menu is below; the full playbook, with the boundaries and the working-with-paid rules, is in the Plan.</p>
 {menu_table()}
 
+<h3>More than one way in</h3>
+<p>The demo request stays our primary call to action, but most buyers are not ready for a thirty-minute sales call on first touch, and that is sharper in Iberia and France. Rather than lose them, paid captures that larger group into nurture through a step-down set of lower-commitment conversion points, then warms them toward a demo over time.</p>
+{paths_table_compact()}
+<p class="small">The demo stays primary; the alternatives feed nurture and are scored lower than a demo request, and each path is its own tracked conversion that goes live only once its nurture exit exists. The full architecture, with owners, is in the Plan.</p>
+
 <h2>6. Growing the customers we already have</h2>
 <p>The forward engine in section 5 turns strangers into customers. This section extends it to the customers we already have, the third loop the plan carves out and points to whenever the acquisition audiences suppress current customers. Acquisition wins the logo; expansion grows it. In a multi-module business the cheapest pipeline we have is the base we already serve, because the relationship and the data already exist and existing customers convert far better than cold prospects.</p>
 <p>Two motions. Cross-sell is a customer on one module taking an adjacent one. Up-sell is growing what they already have: more sites across the estate, more seats, a higher tier, a longer term. Both are measured as expansion revenue and net revenue retention, not new-logo pipeline, and neither competes with acquisition for budget because the audiences are the customers we already hold.</p>
@@ -228,6 +234,8 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 
 <h2>8. Competition, sequence, and how we measure it</h2>
 <p>The competitive read changes where budget should point, because the set we actually compete against is not the one assumed in HQ thinking. In France, Lightspeed tops the auctions at around 52 percent, with Skello consistently present: it is a point-of-sale and Easilys fight, which is the argument for keeping Workforce out of the French paid mix. In Iberia, the live competitors are HR and payroll tools such as factorial and tramitapp rather than point-of-sale, so Workforce stays but the messaging competes on the HR axis. In the UK, the set skews to LMS and training tools such as Absorb, which puts Flow's training-to-execution angle on the right axis. The workforce-management names HQ assumes, such as Fourth and Deputy, barely appear in any auction, so we plan against the competition we can actually see, and brand defence matters most where rivals bid on our terms, which is confirmed on French Bing.</p>
+<p>Naming where French demand actually sits sharpens the Easilys plan: the live segments are central production kitchens that cater to their own sites and franchises (including the public institutions that run central kitchens), dark and delivery-only kitchens, and public sector and education catering. The buyer is the group or franchise operations lead, in operations, procurement or food and beverage, not only a single-site owner. These go in as tightly-themed ad groups inside the French flagship rather than new campaigns; the structure detail is in the Plan.</p>
+<p>Messaging stays disciplined throughout: we claim only what is true and live for a product in a given market, lead with substantiated proof (named customers, outcomes, sector statistics) rather than generic claims every competitor makes, and replace "easy to use" or "all in one" with specific feature angles that actually differentiate. Proof gaps are flagged to the content and PR teams rather than filled with unsubstantiated superiority claims, which carry competitive and legal risk in some markets.</p>
 <p>The work is not blocked. Native lead forms can capture leads now, and the dependencies govern measurement and smarter bidding rather than whether we can run at all. The 90-day sequence runs from stabilising in the first two weeks, to replatforming bid strategy as tracking lands, to replicating the lead-form model and standing up nurture, to building out the newer surfaces.</p>
 <table><thead><tr><th>Phase</th><th>Days</th><th>What happens</th></tr></thead><tbody>
 <tr><td>Stabilise</td><td>0-14</td><td>Brand defence back on, kill the clear waste, fix conversion goals, Audience Network exclusions</td></tr>
@@ -244,6 +252,8 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <h3>How we judge paid, and the brand-defence case</h3>
 <p>One principle now governs how we judge paid going forward, and it sharpens the brand-defence case rather than weakening it. Platform-reported conversions over-count, because a paid click that would have happened anyway, for free, is not new business. So we reactivate brand defence, but we treat its value as a hypothesis to test rather than an article of faith. The strongest version of that hypothesis is where competitors bid on our terms, which is confirmed on French Bing: there, a branded click we would otherwise lose to a rival is genuinely incremental, and defending it is worth real money. We prove it with a geo holdout, brand defence switched on where rivals bid our brand and off in a comparable market where they do not, comparing branded conversions over four to six weeks. If the conversions hold steady with paid off, the spend was not incremental and the budget moves to where lift is real. The standard this sets applies to every channel: we judge paid on incremental lift, measured by holdout, not on platform-reported conversions. The discipline comes from large-scale holdout testing in the industry, most famously the Uber case, where a single set of experiments reallocated roughly 35 million dollars once it showed how much cheap last-click spend was buying conversions that would have arrived anyway. We would rather move budget to where the lift is real than spend because the budget exists.</p>
 
+<p>One refinement to the measurement: the cost-per-lead ceilings are segment-aware and tied to validated deal value, not flat, because a high-value multi-site or enterprise deal justifies a higher cost per lead than a single site. We are validating the offline conversion values against real ACV by segment (single-site, franchise or group, enterprise) with RevOps and sales, and we raise the ceiling only where deal value is proven, still judging spend on incremental lift rather than platform-reported conversions.</p>
+
 <h3>The tracking and attribution fixes, by owner</h3>
 <p>The HubSpot attribution design itself is sound; every break here is upstream of it. The fixes below are provisional, written so the genuine cross-team items can be raised as their own tickets.</p>
 {remediation_table()}
@@ -255,5 +265,5 @@ HTML = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 </body></html>"""
 
 os.makedirs('build', exist_ok=True)
-open('build/report_v22.html','w').write(HTML)
+open('build/report_v23.html','w').write(HTML)
 print('report HTML written', len(HTML), 'chars')

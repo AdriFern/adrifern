@@ -4,7 +4,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 SRC = 'sources/Paid_Media_Audit_Master_Findings_v18.xlsx'
-OUT = 'FINAL_v_current/Paid_Media_Audit_Master_Findings_v20.xlsx'
+OUT = 'FINAL_v_current/Paid_Media_Audit_Master_Findings_v21.xlsx'
 
 wb = openpyxl.load_workbook(SRC)
 
@@ -186,21 +186,41 @@ ap.cell(r,4,'Paid + Growth')
 ap.cell(r,5,'MEDIUM')
 ap.cell(r,6,'None')
 ap.cell(r,7,'Standard in use')
-for rr in (r-1, r):
+first_new = r-1
+# --- v21 addendum rows (demo-alternatives, FR segments, ACV validation) ---
+addendum_rows = [
+    ('47','Q3','Demo-alternative conversion paths (simulator, gated content, brochure, quote request). Planned now, live as each '
+     "path's tracked conversion and nurture exit exist. Assets produced by web, content and RevOps; paid distributes. Judged on "
+     'downstream SQL, not cost per lead.','Us + web/content/RevOps','MEDIUM','Per-path tracked conversion + nurture exit','Q3 plan'),
+    ('48','Mid-June+','Build French Easilys segment ad groups (central kitchens incl public institutions, dark kitchens, public sector '
+     'and education, franchise groups) and a shared keyword universe with the SEO manager. Reusable template for other markets.',
+     'Us + SEO manager','HIGH','None','Build'),
+    ('49','Next week','Validate ACV by segment (single-site, franchise or group, enterprise) with RevOps and sales; set segment-aware '
+     'CPL ceilings and update offline conversion values accordingly. Current conversion values are provisional pending this validation.',
+     'Us + RevOps + sales','HIGH','None','Open'),
+]
+for num,timing,action,owner,sev,dep,status in addendum_rows:
+    r += 1
+    ap.cell(r,1,num); ap.cell(r,2,timing); ap.cell(r,3,action)
+    ap.cell(r,4,owner); ap.cell(r,5,sev); ap.cell(r,6,dep); ap.cell(r,7,status)
+for rr in range(first_new, r+1):
     for c in range(1,8):
         ap.cell(rr,c).alignment = Alignment(vertical='top', wrap_text=True)
-print('Action Plan rows added at 46,47')
+print('Action Plan rows added 46..%d' % r)
 
 # =====================================================================
 # COVER TAB  (v20 note)
 # =====================================================================
 cov = wb['Cover']
-cov['C8'] = ("Last updated: 2026-06-03 (v20). Added the Jun to Dec phased budget plan to the Budget Impact tab: a firm 110,000 euro "
-"floor, market summary plus paid search and paid social by month (France, UK, Iberia, LATAM), with the All rows as live SUM formulas "
-"(Jun-Dec 80,500 search and 29,500 social; full-year about 254,600). Reframed away from 'no new budget' to a disciplined base funded "
-"by cutting waste, with staged top-ups held off-plan. MX trimmed into Iberia LinkedIn so Iberia social now sits ahead of UK; the "
-"45,000 non-recurrent LATAM line is closed and redistributed. Added a Spend-pace-vs-phased-plan KPI (Reporting Cadence) and Q3 "
-"answer-engine visibility plus a paid support menu pointer (Action Plan). Locked Numbers tab unchanged.")
+cov['C8'] = ("Last updated: 2026-06-03 (v21). Carries the v20 Jun to Dec phased budget plan (firm 110,000 euro floor; Jun-Dec 80,500 "
+"search and 29,500 social; full-year about 254,600), with the All rows as live SUM formulas and the Locked Numbers tab unchanged. "
+"v21 adds three Action Plan rows from the council review: demo-alternative conversion paths (simulator, gated content, brochure, "
+"quote request) planned now and live only as each path's tracked conversion and nurture exit exist, assets owned by web, content and "
+"RevOps; French Easilys segment ad groups (central kitchens including public institutions, dark kitchens, public sector and "
+"education, franchise groups) plus a shared keyword universe built with the SEO manager and reusable across markets; and validating "
+"ACV by segment (single-site, franchise or group, enterprise) to set segment-aware CPL ceilings, with the conversion values held "
+"provisional pending that validation. Earlier v20 additions retained: Spend-pace-vs-phased-plan KPI and the answer-engine visibility "
+"and paid support menu rows.")
 cov['C8'].alignment = Alignment(wrap_text=True, vertical='top')
 print('Cover updated')
 
@@ -222,7 +242,21 @@ cl.cell(r,4, ("Master sheet v20. Added the JUN-DEC PHASED BUDGET PLAN to the Bud
 "SEO/content/PR owned with paid amplifying; and a pointer to the paid support menu in The Plan as the standard for growth-team "
 "requests). Locked Numbers tab untouched."))
 cl.cell(r,4).alignment = Alignment(wrap_text=True, vertical='top')
-print('Change Log updated at row', r)
+
+r += 1  # v21 entry
+cl.cell(r,1,'24')
+cl.cell(r,2,'2026-06-03')
+cl.cell(r,3,'Adrian')
+cl.cell(r,4, ("Master sheet v21. Council-review additions on top of v20, no change to budget numbers or the Locked Numbers tab. Three "
+"Action Plan rows: (1) demo-alternative conversion paths (ROI/savings simulator, gated content, brochure, quote request) as a "
+"step-down beside the primary demo CTA, planned now and live only where each path's own tracked conversion and nurture exit exist, "
+"assets produced by web, content and RevOps with paid distributing, judged on downstream SQL not cost per lead; (2) French Easilys "
+"segment ad groups (central kitchens including public institutions, dark kitchens, public sector and education, franchise groups) "
+"and a shared keyword universe built with the SEO manager, reusable as the template for other markets; (3) validate ACV by segment "
+"(single-site, franchise or group, enterprise) with RevOps and sales to set segment-aware CPL ceilings and update the offline "
+"conversion values, which are held provisional pending that validation. Budget Impact figures and Locked Numbers unchanged."))
+cl.cell(r,4).alignment = Alignment(wrap_text=True, vertical='top')
+print('Change Log updated through row', r)
 
 # force recalc on load so LibreOffice/Excel evaluate the SUM formulas
 wb.calculation.fullCalcOnLoad = True

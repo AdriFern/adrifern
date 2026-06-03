@@ -7,7 +7,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
 SRC='sources/Paid_Media_Forward_Strategy_Deck_v15.pptx'
-OUT='FINAL_v_current/Paid_Media_Forward_Strategy_Deck_v17.pptx'
+OUT='FINAL_v_current/Paid_Media_Forward_Strategy_Deck_v18.pptx'
 
 PURPLE=RGBColor(0x2F,0x1E,0x4A)
 PINK=RGBColor(0xC2,0x30,0x58)
@@ -198,6 +198,51 @@ r=tf.paragraphs[0].add_run()
 r.text='Search stays evergreen. Every play needs a working conversion and a tracked form before launch.'
 style_run(r,11,True,PINK)
 move_slide(ps, JUDGE_IDX+2)  # -> index 26
+# messaging-discipline line in the support-menu speaker notes
+ps.notes_slide.notes_text_frame.text=("Messaging is specific, substantiated and true to what the product does in each market: "
+"claim only what is true and live per market, lead with substantiated proof, and cut generic claims for specific feature angles.")
+
+# =====================================================================
+# 4) MORE THAN ONE WAY IN (demo-alternative conversion paths), after support-menu
+# =====================================================================
+mw=clone_slide(prs.slides[JUDGE_IDX])
+set_line(shape_by_name(mw,'Text 0'),'MORE THAN ONE WAY IN')
+set_line(shape_by_name(mw,'Text 1'),'The demo stays primary. A step-down set of tracked paths captures the not-ready into nurture.')
+for nm in ('Text 2','Table 0','Text 3'):
+    sh=shape_by_name(mw,nm)
+    if sh is not None: sh._element.getparent().remove(sh._element)
+paths=[
+    ('Path','Who it is for'),
+    ('Book a demo (primary)','Buyers ready to talk to sales'),
+    ('ROI or savings simulator','Buyers who want proof of value before a call'),
+    ('Gated content (ebook, whitepaper, research)','Early-stage buyers researching the problem'),
+    ('PDF brochure download','Buyers who want detail without a call'),
+    ('Request a quote','Buyers price-checking, closer to a decision'),
+]
+gf=mw.shapes.add_table(6,2,Inches(0.7),Inches(2.0),Inches(11.93),Inches(3.6))
+t=gf.table; t.first_row=False; t.horz_banding=False
+t.columns[0].width=Inches(5.4); t.columns[1].width=Inches(6.53)
+for ri,row in enumerate(paths):
+    t.rows[ri].height=Inches(0.55 if ri>0 else 0.34)
+    for ci,val in enumerate(row):
+        c=t.cell(ri,ci)
+        if ri==0:
+            fill_cell(c, PURPLE); cell_text(c,val,10,True,WHITE)
+        else:
+            fill_cell(c, RGBColor(0xF4,0xF2,0xF8) if ri%2==0 else None)
+            cell_text(c,val,11, ci==0, PURPLE if ci==0 else BODY)
+            c.vertical_anchor=MSO_ANCHOR.MIDDLE
+tb=mw.shapes.add_textbox(Inches(0.7),Inches(6.0),Inches(11.93),Inches(0.4))
+r=tb.text_frame.paragraphs[0].add_run()
+r.text='Demo stays primary. The alternatives feed nurture, scored lower, each tracked.'
+style_run(r,11,True,PINK)
+mw.notes_slide.notes_text_frame.text=("Demo stays the primary call to action. Each alternative is its own tracked conversion with a "
+"value lower than a demo, so bidding never optimises to the cheapest, lowest-intent form-fill. Alternative-path leads feed nurture, "
+"scored lower than a demo request, and are handed to sales only once nurture qualifies them, which protects the SDR team running "
+"below target. A path goes live only where its tracked conversion and its nurture exit exist; until then it is planned, not live. "
+"The assets (simulator, quote flow, brochure, gated content) are produced by web, content and RevOps; paid uses them as conversion "
+"points and distributes them, it does not own asset production.")
+move_slide(mw, JUDGE_IDX+3)  # -> index 27
 
 os.makedirs('FINAL_v_current', exist_ok=True)
 prs.save(OUT)
