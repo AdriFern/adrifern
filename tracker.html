@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Marketing Measurement Priorities and Progress</title>
+<style>
+  :root{--navy:#1F3864;--green:#2E7D32;--blue:#2563EB;--grey:#6B7280;--ink:#1f2937;--line:#E5E7EB;--greenbg:#F0F7F1;--bluebg:#EEF3FB;--cardbg:#F8FAFC;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.4;}
+  .page{width:760px;margin:0 auto;padding:28px 30px;}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--navy);padding-bottom:11px;margin-bottom:12px;}
+  h1{font-size:24px;color:var(--navy);letter-spacing:-0.2px;white-space:nowrap;}
+  .sub{font-size:12.5px;color:var(--grey);margin-top:4px;}
+  .badge{background:var(--green);color:#fff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;letter-spacing:.5px;white-space:nowrap;}
+  .cards{margin-bottom:12px;}
+  .card{border:1px solid var(--line);border-radius:12px;padding:11px 16px;background:var(--cardbg);margin-bottom:8px;}
+  .card:last-child{margin-bottom:0;}
+  .chead{display:flex;align-items:center;margin-bottom:7px;}
+  .num{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:13px;text-align:center;line-height:26px;margin-right:10px;flex:none;}
+  .cmid{flex:1;min-width:0;}
+  .ctitle{font-size:15px;font-weight:700;color:var(--navy);}
+  .tag{font-weight:600;color:var(--grey);font-size:12px;}
+  .cdesc{font-size:11.5px;color:var(--grey);margin-top:1px;}
+  .pill{margin-left:auto;font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:.4px;flex:none;white-space:nowrap;}
+  .pill.prog{background:var(--bluebg);color:var(--blue);}
+  .pill.done{background:var(--greenbg);color:var(--green);}
+  .pill.appr{background:#FEF3C7;color:#92660b;}
+  .pill.wait{background:#F3F4F6;color:var(--grey);}
+  .bar{height:9px;background:#E9EDF2;border-radius:6px;overflow:hidden;margin:2px 0 8px;}
+  .fill{height:100%;background:linear-gradient(90deg,#3b82f6,#2563EB);border-radius:6px;}
+  .fill.g{background:linear-gradient(90deg,#4CAF50,#2E7D32);}
+  .steps{display:flex;}
+  .step{flex:1;border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.3;margin-right:8px;}
+  .steps .step:last-child{margin-right:0;}
+  .step .lab{font-weight:700;display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+  .step.done{background:var(--greenbg);} .step.done .lab{color:var(--green);}
+  .step.now{background:var(--bluebg);} .step.now .lab{color:var(--blue);}
+  .note{font-size:11.5px;color:var(--grey);line-height:1.35;}
+  .legend{font-size:11px;color:var(--grey);border-top:1px solid var(--line);padding-top:10px;margin-top:2px;display:flex;justify-content:space-between;}
+  @page{size:A4;margin:12mm;}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.page{width:auto;padding:0;}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div><h1>Marketing Measurement</h1><div class="sub">Priorities and progress &middot; Updated 18 June 2026</div></div>
+    <div class="badge">ON TRACK</div>
+  </div>
+  <div class="cards">
+
+    <div class="card">
+      <div class="chead"><div class="num">1</div>
+        <div class="cmid"><div class="ctitle">Demo conversion tracking &nbsp;<span class="tag">per market</span></div>
+        <div class="cdesc">Demo-request conversions firing and counted correctly in each market.</div></div>
+        <div class="pill prog">IN PROGRESS</div></div>
+      <div class="bar"><div class="fill" style="width:45%"></div></div>
+      <div class="steps">
+        <div class="step done"><span class="lab">UK</span>Confirmed and recording</div>
+        <div class="step now"><span class="lab">France</span>Diagnosed, fix pending</div>
+        <div class="step now"><span class="lab">Spain</span>Firing but overcounting, needs the form-GUID trigger</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="num">2</div>
+        <div class="cmid"><div class="ctitle">Paid attribution and source truth</div>
+        <div class="cdesc">Paid's real contribution measurable, with the true source preserved end to end.</div></div>
+        <div class="pill prog">NEAR COMPLETE</div></div>
+      <div class="bar"><div class="fill g" style="width:82%"></div></div>
+      <div class="steps">
+        <div class="step done"><span class="lab">GA4 reattribution</span>Method in place, paid measurable at the aggregate</div>
+        <div class="step now"><span class="lab">Dynamics source overwrite</span>Being closed on the RevOps side, not yet stopped</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="num">3</div>
+        <div class="cmid"><div class="ctitle">UTM standardisation rollout</div>
+        <div class="cdesc">One tagging standard applied across paid, so every click carries a clean source.</div></div>
+        <div class="pill prog">IN PROGRESS</div></div>
+      <div class="bar"><div class="fill" style="width:40%"></div></div>
+      <div class="note">Standard defined, rollout in progress. Was gated on the tracking fix.</div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="num">4</div>
+        <div class="cmid"><div class="ctitle">Lead MQL and SQL conversions &nbsp;<span class="tag">UK and Spain</span></div>
+        <div class="cdesc">Qualified-stage conversions fed back so paid can optimise to pipeline, not just leads.</div></div>
+        <div class="pill wait">NOT STARTED</div></div>
+      <div class="bar"><div class="fill" style="width:6%"></div></div>
+      <div class="note">Gated on the offline-conversion upload feed question to RevOps.</div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="num">5</div>
+        <div class="cmid"><div class="ctitle">Offline conversion feed &nbsp;<span class="tag">CRM to Google Ads</span></div>
+        <div class="cdesc">Closed and qualified events sent back to Google Ads for optimisation.</div></div>
+        <div class="pill wait">PENDING</div></div>
+      <div class="bar"><div class="fill" style="width:4%"></div></div>
+      <div class="note">Pending RevOps confirmation it exists or is planned.</div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="num">6</div>
+        <div class="cmid"><div class="ctitle">LinkedIn to CRM</div>
+        <div class="cdesc">LinkedIn leads flowing into the CRM and nurtured automatically.</div></div>
+        <div class="pill done">LIVE</div></div>
+      <div class="bar"><div class="fill g" style="width:80%"></div></div>
+      <div class="note">Sync verified and live. Native lead-gen nurture workflow still open with RevOps.</div>
+    </div>
+
+    <div class="card">
+      <div class="chead"><div class="num">7</div>
+        <div class="cmid"><div class="ctitle">Form CRO &nbsp;<span class="tag">shorter forms</span></div>
+        <div class="cdesc">Shorter forms to lift conversion rate on the key landing pages.</div></div>
+        <div class="pill appr">APPROVED</div></div>
+      <div class="bar"><div class="fill" style="width:30%"></div></div>
+      <div class="note">Approved by the VP and RevOps. Implementation pending, in build.</div>
+    </div>
+
+  </div>
+  <div class="legend"><span>Green = done or live &nbsp;&middot;&nbsp; Blue = in progress &nbsp;&middot;&nbsp; Amber = approved &nbsp;&middot;&nbsp; Grey = not started or pending</span><span>Mapal OS &middot; internal use</span></div>
+</div>
+</body>
+</html>
