@@ -95,6 +95,7 @@ async function buildSpec() {
       { font: FONT, size: 14, color: MUTED, align: "center", valign: "middle" }));
   }
 
+  const REGIONS = [["IB", "Iberia"], ["UK", "UK"], ["FR", "France"]];
   const phc = (t) => ({ text: t, color: PH, bold: true });
   const hdrCell = (t) => ({ text: t, fill: NAVY, color: WHITE, bold: true, align: "center" });
   const mktCell = (t) => ({ text: t, bold: true, color: SLATE, align: "left" });
@@ -152,30 +153,26 @@ async function buildSpec() {
     const items = [];
     titleBlock(items, "Paid search");
     items.push(text(MARGIN, 1.18, 6, 0.35, [{ text: "Period: ", color: MUTED }, phc("[ PERIOD ]")], { font: FONT, size: 12.5, align: "left" }));
-    const rows = [
-      [hdrCell("Market"), hdrCell("Spend"), hdrCell("Leads / MQLs"), hdrCell("Cost per lead"), hdrCell("Top campaign")],
-      [mktCell("UK"), valCell("[SPEND_UK]"), valCell("[LEADS_UK]"), valCell("[CPL_UK]"), valCell("[TOPCAMP_UK]")],
-      [mktCell("Spain"), valCell("[SPEND_ES]"), valCell("[LEADS_ES]"), valCell("[CPL_ES]"), valCell("[TOPCAMP_ES]")],
-      [mktCell("France"), valCell("[SPEND_FR]"), valCell("[LEADS_FR]"), valCell("[CPL_FR]"), valCell("[TOPCAMP_FR]")],
-    ];
-    items.push(table(MARGIN, 1.6, [1.1, 1.45, 1.65, 1.55, 1.95], [0.5, 0.6, 0.6, 0.6], rows));
-    items.push(text(MARGIN, 4.25, 7.7, 0.35, "Best keywords or themes", { font: FONT, size: 13, bold: true, color: SLATE }));
-    const pills = ["[ KEYWORD_1 ]", "[ KEYWORD_2 ]", "[ KEYWORD_3 ]"];
-    let px = MARGIN; const pw = 2.45, ph = 0.5;
-    pills.forEach((p) => {
-      items.push(rect(px, 4.65, pw, ph, { fill: TINT_TEAL, radius: 0.1 }));
-      items.push(text(px, 4.65, pw, ph, p, { font: FONT, size: 12.5, bold: true, color: PH, align: "center", valign: "middle" }));
-      px += pw + 0.18;
+    const FW = 12.13;
+    const colW = [3.7, 1.85, 2.05, 2.05, 2.48]; // sum = 12.13
+    const rows = [[hdrCell("Campaign"), hdrCell("Spend"), hdrCell("Leads / MQLs"), hdrCell("Cost per lead"), hdrCell("Top theme")]];
+    const rowH = [0.42];
+    REGIONS.forEach(([code, name]) => {
+      rows.push([{ text: name, colspan: 5, fill: TINT_TEAL, color: TEAL, bold: true, align: "left", size: 12 }]);
+      rowH.push(0.34);
+      for (let i = 1; i <= 3; i++) {
+        rows.push([
+          { text: `[${code}_CAMP_${i}]`, color: PH, bold: true, align: "left", size: 11 },
+          { text: `[${code}_SPEND_${i}]`, color: PH, bold: true, align: "center", size: 11 },
+          { text: `[${code}_LEADS_${i}]`, color: PH, bold: true, align: "center", size: 11 },
+          { text: `[${code}_CPL_${i}]`, color: PH, bold: true, align: "center", size: 11 },
+          { text: `[${code}_THEME_${i}]`, color: PH, bold: true, align: "left", size: 11 },
+        ]);
+        rowH.push(0.36);
+      }
     });
-    items.push(rect(MARGIN, 5.45, 7.7, 1.35, { fill: TINT_AMBER, radius: 0.1 }));
-    items.push(text(MARGIN + 0.25, 5.58, 7.2, 0.3, "CAMPAIGN SPOTLIGHT", { font: FONT, size: 11, bold: true, color: AMBER, charSpacing: 2 }));
-    items.push(text(MARGIN + 0.25, 5.9, 7.2, 0.8,
-      [{ text: "[ SPOTLIGHT_DESC ]", color: PH, bold: true, br: true }, { text: "Audience: ", color: SLATE }, { text: "[ SPOTLIGHT_AUDIENCE ]", color: PH, bold: true }],
-      { font: FONT, size: 13, valign: "top", paraGap: 4 }));
-    const chX = 8.7, chW = 4.05;
-    items.push(text(chX, 1.6, chW, 0.35, "Spend by market", { font: FONT, size: 13, bold: true, color: SLATE }));
-    items.push(chart(chX - 0.1, 2.0, chW + 0.15, 3.6, ["UK", "Spain", "France"], [1200, 800, 1000], TEAL));
-    items.push(text(chX, 5.62, chW, 0.3, "Placeholder values. Replace with Monday figures.", { font: FONT, size: 10.5, italic: true, color: MUTED }));
+    items.push(table(MARGIN, 1.55, colW, rowH, rows));
+    items.push(text(MARGIN, 6.4, FW, 0.4, "One row per live campaign, grouped by region. Replace the bracketed values with Monday figures, and add or remove rows per region as needed.", { font: FONT, size: 11, italic: true, color: MUTED, align: "left" }));
     slides.push({ bg: WHITE, items });
   }
 
@@ -184,22 +181,27 @@ async function buildSpec() {
     const items = [];
     titleBlock(items, "Paid social");
     items.push(text(MARGIN, 1.18, 6, 0.35, [{ text: "Period: ", color: MUTED }, phc("[ PERIOD ]"), { text: "      LinkedIn", color: MUTED }], { font: FONT, size: 12.5, align: "left" }));
-    const rows = [
-      [hdrCell("Market"), hdrCell("Spend"), hdrCell("Results"), hdrCell("Cost per result"), hdrCell("Audience")],
-      [mktCell("UK / EN"), valCell("[SOC_SPEND_UK]"), valCell("[SOC_RES_UK]"), valCell("[SOC_CPR_UK]"), valCell("[SOC_AUD_UK]")],
-      [mktCell("Spain"), valCell("[SOC_SPEND_ES]"), valCell("[SOC_RES_ES]"), valCell("[SOC_CPR_ES]"), valCell("[SOC_AUD_ES]")],
-      [mktCell("France"), valCell("[SOC_SPEND_FR]"), valCell("[SOC_RES_FR]"), valCell("[SOC_CPR_FR]"), valCell("[SOC_AUD_FR]")],
-    ];
-    items.push(table(MARGIN, 1.6, [1.05, 1.7, 1.5, 1.7, 1.75], [0.5, 0.6, 0.6, 0.6], rows));
-    items.push(text(MARGIN, 4.25, 7.7, 0.35, "Warm audiences in play", { font: FONT, size: 13, bold: true, color: SLATE }));
-    items.push(rect(MARGIN, 4.65, 7.7, 0.6, { fill: TINT_AMBER, radius: 0.1 }));
-    items.push(text(MARGIN + 0.2, 4.65, 7.3, 0.6, "[ WARM_AUDIENCES ]", { font: FONT, size: 13, bold: true, color: PH, align: "left", valign: "middle" }));
-    items.push(rect(MARGIN, 5.55, 7.7, 1.0, { fill: TINT_TEAL, radius: 0.1 }));
-    items.push(text(MARGIN + 0.25, 5.55, 7.2, 1.0, "Search drives the pipeline. Social is for warm retargeting and nurture.", { font: FONT, size: 14.5, bold: true, color: NAVY, align: "left", valign: "middle" }));
-    const chX = 8.7, chW = 4.05;
-    items.push(text(chX, 1.6, chW, 0.35, "Social spend by market", { font: FONT, size: 13, bold: true, color: SLATE }));
-    items.push(chart(chX - 0.1, 2.0, chW + 0.15, 3.6, ["UK / EN", "Spain", "France"], [600, 450, 500], AMBER));
-    items.push(text(chX, 5.62, chW, 0.3, "Placeholder values. Replace with Monday figures.", { font: FONT, size: 10.5, italic: true, color: MUTED }));
+    const FW = 12.13;
+    const colW = [3.5, 1.85, 1.9, 2.2, 2.68]; // sum = 12.13
+    const rows = [[hdrCell("Campaign"), hdrCell("Spend"), hdrCell("Results"), hdrCell("Cost per result"), hdrCell("Audience")]];
+    const rowH = [0.42];
+    REGIONS.forEach(([code, name]) => {
+      rows.push([{ text: name, colspan: 5, fill: TINT_AMBER, color: AMBER, bold: true, align: "left", size: 12 }]);
+      rowH.push(0.34);
+      for (let i = 1; i <= 3; i++) {
+        rows.push([
+          { text: `[${code}_SOC_CAMP_${i}]`, color: PH, bold: true, align: "left", size: 11 },
+          { text: `[${code}_SOC_SPEND_${i}]`, color: PH, bold: true, align: "center", size: 11 },
+          { text: `[${code}_SOC_RES_${i}]`, color: PH, bold: true, align: "center", size: 11 },
+          { text: `[${code}_SOC_CPR_${i}]`, color: PH, bold: true, align: "center", size: 11 },
+          { text: `[${code}_SOC_AUD_${i}]`, color: PH, bold: true, align: "left", size: 11 },
+        ]);
+        rowH.push(0.36);
+      }
+    });
+    items.push(table(MARGIN, 1.55, colW, rowH, rows));
+    items.push(rect(MARGIN, 6.35, FW, 0.62, { fill: TINT_TEAL, radius: 0.1 }));
+    items.push(text(MARGIN + 0.25, 6.35, FW - 0.5, 0.62, "Search drives the pipeline. Social is for warm retargeting and nurture.", { font: FONT, size: 14, bold: true, color: NAVY, align: "left", valign: "middle" }));
     slides.push({ bg: WHITE, items });
   }
 
@@ -412,7 +414,7 @@ async function emitPptx(spec) {
       } else if (it.t === "table") {
         const rows = it.rows.map((r) => r.map((c) => ({
           text: c.text,
-          options: { fill: c.fill ? { color: c.fill } : undefined, color: c.color, bold: c.bold, align: c.align || "center", valign: "middle", fontFace: FONT, fontSize: c.fill === NAVY ? 11.5 : 11.5 },
+          options: { fill: c.fill ? { color: c.fill } : undefined, color: c.color, bold: c.bold, align: c.align || "center", valign: "middle", fontFace: FONT, fontSize: c.size || 11.5, colspan: c.colspan },
         })));
         s.addTable(rows, { x: it.x, y: it.y, colW: it.colW, rowH: it.rowH, border: { type: "solid", pt: 1, color: HAIR }, valign: "middle", margin: 4, fill: { color: WHITE } });
       } else if (it.t === "chart") {
@@ -479,20 +481,22 @@ function emitHtml(spec) {
         const align_self = align === "center" ? "text-align:center;" : "";
         inner += `<div style="${st}"><div style="width:100%;${align_self}">${runsToHtml(it.content, it)}</div></div>`;
       } else if (it.t === "table") {
-        let x = it.x;
-        // header + rows drawn as absolutely positioned cells
+        // absolutely positioned cells, with colspan support
         let cy = it.y;
         it.rows.forEach((row, ri) => {
-          let cx = it.x;
+          let colIdx = 0;
           const rh = it.rowH[ri];
-          row.forEach((c, ci) => {
-            const cwid = it.colW[ci];
+          row.forEach((c) => {
+            const span = c.colspan || 1;
+            let cwid = 0;
+            for (let k = 0; k < span; k++) cwid += it.colW[colIdx + k];
+            const cx = it.x + it.colW.slice(0, colIdx).reduce((a, b) => a + b, 0);
             const cl = `left:${cx * PX}px;top:${cy * PX}px;width:${cwid * PX}px;height:${rh * PX}px;`;
             const fill = c.fill ? `#${c.fill}` : "#FFFFFF";
             const al = c.align || "center";
-            const fs = 11.5;
+            const fs = c.size || 11.5;
             inner += `<div style="position:absolute;${cl}box-sizing:border-box;border:1px solid #${HAIR};background:${fill};display:flex;align-items:center;justify-content:${al === "left" ? "flex-start" : "center"};padding:0 6px;color:#${c.color || SLATE};font-weight:${c.bold ? 700 : 400};font-size:${pt2px(fs)}px;text-align:${al};">${esc(c.text)}</div>`;
-            cx += cwid;
+            colIdx += span;
           });
           cy += rh;
         });
