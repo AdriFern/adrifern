@@ -233,7 +233,21 @@ final class FamilyStore {
                 let defaults = UserDefaults.standard
                 defaults.set(ParentRole.parentB.rawValue, forKey: Keys.role)
                 defaults.set(zone.zoneID.ownerName, forKey: Keys.zoneOwnerName)
-                await refresh(silent: true)
+                let synced = await refresh(silent: true)
+                if !synced && family == nil {
+                    // The zone exists but couldn't be synced — a transient
+                    // failure must not read as "nothing to restore".
+                    defaults.removeObject(forKey: Keys.role)
+                    defaults.removeObject(forKey: Keys.zoneOwnerName)
+                    myRole = .parentA
+                    service.configure(isOwner: true, zoneOwnerName: nil)
+                    hasZoneAccess = false
+                    alert = AppAlert(
+                        title: String(localized: "Couldn't reach iCloud"),
+                        message: String(localized: "Your calendar was found but couldn't be loaded. Please check your connection and try again.")
+                    )
+                    return false
+                }
                 if family != nil {
                     if family?.partnerHasJoined == true {
                         markSetupComplete(role: .parentB, zoneOwnerName: zone.zoneID.ownerName)
@@ -361,6 +375,15 @@ final class FamilyStore {
     func completeJoin(myName: String, colorHex: String) async -> Bool {
         do {
             let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
+            // Last line of defense against two people racing one invitation:
+            // if someone else completed the join first, back out.
+            if let taken = record["nameB"] as? String,
+               !taken.trimmingCharacters(in: .whitespaces).isEmpty {
+                try? await service.deleteZone()
+                resetLocalState()
+                alert = Self.invitationUsedAlert
+                return false
+            }
             record["nameB"] = myName
             record["colorB"] = colorHex
             try await service.save(records: [record])
@@ -403,8 +426,9 @@ final class FamilyStore {
 
     // MARK: - Refresh
 
-    func refresh(silent: Bool = false) async {
-        guard hasZoneAccess, !isSyncing else { return }
+    @discardableResult
+    func refresh(silent: Bool = false) async -> Bool {
+        guard hasZoneAccess, !isSyncing else { return false }
         isSyncing = true
         defer { isSyncing = false }
 
@@ -414,6 +438,7 @@ final class FamilyStore {
             do {
                 let changes = try await service.fetchZoneChanges(since: changeToken)
                 let previousStatuses = storedRequestStatuses()
+                let partnerWasJoined = family?.partnerHasJoined == true
                 let remotelyChangedDays = apply(changes)
                 if let token = changes.changeToken {
                     changeToken = token
@@ -425,10 +450,14 @@ final class FamilyStore {
                     // notification storm for pre-existing requests.
                     recordAllRequestStatuses()
                 } else {
-                    notifyAboutChanges(previousStatuses: previousStatuses, remotelyChangedDays: remotelyChangedDays)
+                    notifyAboutChanges(
+                        previousStatuses: previousStatuses,
+                        remotelyChangedDays: remotelyChangedDays,
+                        partnerWasJoined: partnerWasJoined
+                    )
                 }
                 await lockShareIfNeeded()
-                return
+                return true
             } catch {
                 let code = Self.normalizedCKErrorCode(error)
                 if code == .changeTokenExpired, !retriedAfterTokenReset {
@@ -443,7 +472,7 @@ final class FamilyStore {
                 }
                 if code == .zoneNotFound || code == .userDeletedZone {
                     handleZoneGone()
-                    return
+                    return false
                 }
                 if retriedAfterTokenReset {
                     // The full refetch after a token reset failed; restore the
@@ -451,7 +480,7 @@ final class FamilyStore {
                     loadCache()
                 }
                 if !silent { presentError(error) }
-                return
+                return false
             }
         }
     }
@@ -842,29 +871,66 @@ final class FamilyStore {
         }
     }
 
-    /// Owner-only: disconnects the co-parent (they lose access immediately),
-    /// clears their profile slot, and re-opens the invitation so a new — or
-    /// the same — person can join again. The calendar and history stay.
+    /// Owner-only: disconnects the co-parent. The share is deleted outright,
+    /// so their access AND the old invitation link die immediately and
+    /// permanently; a fresh link is minted the next time the invitation is
+    /// shown. The calendar and its history stay. Any pending requests are
+    /// cancelled so no day stays frozen behind an unanswerable proposal.
+    /// Nothing local is touched until the server-side revocation succeeds.
     func removeCoParent() async {
         guard myRole == .parentA else { return }
         do {
-            if let share = try? await service.fetchShare() {
-                for participant in share.participants where participant.role != .owner {
-                    share.removeParticipant(participant)
-                }
-                share.publicPermission = .readWrite
-                try await service.save(records: [share])
+            let shareID = service.recordID(forName: CKRecordNameZoneWideShare)
+            do {
+                try await service.save(records: [], deleting: [shareID])
+            } catch let error as CKError where error.code == .unknownItem {
+                // Share already gone — revocation is already effective.
             }
-            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
-            record["nameB"] = ""
-            try await service.save(records: [record])
+
+            var records: [CKRecord] = []
+            let familyRecord = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
+            familyRecord["nameB"] = ""
+            records.append(familyRecord)
+
+            var cancelled: [ChangeRequest] = []
+            for request in requests where request.isPending {
+                var resolved = request
+                resolved.status = .cancelled
+                resolved.resolvedAt = Date()
+                let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
+                resolved.apply(to: record)
+                records.append(record)
+                cancelled.append(resolved)
+            }
+            try await service.save(records: records)
 
             if var updated = family {
                 updated.nameB = ""
                 family = updated
             }
-            UserDefaults.standard.set(false, forKey: Keys.shareLocked)
+            for request in cancelled {
+                upsert(request)
+                rememberRequestStatus(request)
+            }
+            shareURL = nil
+            let defaults = UserDefaults.standard
+            defaults.removeObject(forKey: Keys.shareURL)
+            defaults.set(false, forKey: Keys.shareLocked)
             saveCache()
+        } catch {
+            presentError(error)
+        }
+    }
+
+    /// Owner-only: makes sure a live invitation exists (e.g. after removing
+    /// a co-parent, when the old share was deleted). Called by InviteView.
+    func ensureInvitationReady() async {
+        guard myRole == .parentA, shareURL == nil, family != nil else { return }
+        do {
+            let title = String(localized: "Custody calendar for \(family?.childName ?? "")")
+            let url = try await service.createZoneAndShare(title: title)
+            shareURL = url
+            UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
         } catch {
             presentError(error)
         }
@@ -872,7 +938,7 @@ final class FamilyStore {
 
     private func resetLocalState() {
         let defaults = UserDefaults.standard
-        for key in [Keys.role, Keys.setupComplete, Keys.zoneOwnerName, Keys.changeToken, Keys.shareURL, Keys.requestStatuses, Keys.joinNeedsProfile] {
+        for key in [Keys.role, Keys.setupComplete, Keys.zoneOwnerName, Keys.changeToken, Keys.shareURL, Keys.requestStatuses, Keys.joinNeedsProfile, Keys.shareLocked] {
             defaults.removeObject(forKey: key)
         }
         try? FileManager.default.removeItem(at: Self.cacheURL)
@@ -911,7 +977,19 @@ final class FamilyStore {
         UserDefaults.standard.set(statuses, forKey: Keys.requestStatuses)
     }
 
-    private func notifyAboutChanges(previousStatuses: [String: String], remotelyChangedDays: Set<String>) {
+    private func notifyAboutChanges(
+        previousStatuses: [String: String],
+        remotelyChangedDays: Set<String>,
+        partnerWasJoined: Bool
+    ) {
+        if myRole == .parentA, !partnerWasJoined, family?.partnerHasJoined == true {
+            postLocalNotification(
+                id: "joined-\(Int(Date().timeIntervalSince1970))",
+                title: String(localized: "Co-parent joined 🎉"),
+                body: String(localized: "\(otherName) joined the calendar. You can now plan together.")
+            )
+        }
+
         var statuses: [String: String] = [:]
         var daysExplainedByRequests: Set<String> = []
 

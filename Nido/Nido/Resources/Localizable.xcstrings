@@ -34,6 +34,17 @@
         }
       }
     },
+    "%@ joined the calendar. You can now plan together.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ se unió al calendario. Ya podéis organizaros juntos."
+          }
+        }
+      }
+    },
     "%@ proposed that this day goes to %@.": {
       "extractionState": "manual",
       "localizations": {
@@ -114,10 +125,40 @@
     "%lld days had already changed since this was proposed, so they were left as they are now.": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 day had already changed since this was proposed, so it was left as it is now."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days had already changed since this was proposed, so they were left as they are now."
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld días ya habían cambiado desde que se propuso esto, así que se dejaron como están ahora."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 día ya había cambiado desde que se propuso esto, así que se dejó como está ahora."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld días ya habían cambiado desde que se propuso esto, así que se dejaron como están ahora."
+                }
+              }
+            }
           }
         }
       }
@@ -125,10 +166,40 @@
     "%lld days were filled in.": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 day was filled in."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days were filled in."
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se rellenaron %lld días."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Se rellenó 1 día."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Se rellenaron %lld días."
+                }
+              }
+            }
           }
         }
       }
@@ -136,10 +207,40 @@
     "%lld days were skipped because they're part of a pending request.": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 day was skipped because it's part of a pending request."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days were skipped because they're part of a pending request."
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld días se omitieron porque forman parte de una solicitud pendiente."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 día se omitió porque forma parte de una solicitud pendiente."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld días se omitieron porque forman parte de una solicitud pendiente."
+                }
+              }
+            }
           }
         }
       }
@@ -147,10 +248,40 @@
     "%lld unassigned": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 unassigned"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld unassigned"
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld sin asignar"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "1 sin asignar"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld sin asignar"
+                }
+              }
+            }
           }
         }
       }
@@ -169,10 +300,40 @@
     "+%lld more days": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+1 more day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld more days"
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld días más"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+1 día más"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld días más"
+                }
+              }
+            }
           }
         }
       }
@@ -474,6 +635,17 @@
         }
       }
     },
+    "Co-parent joined 🎉": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El otro progenitor se unió 🎉"
+          }
+        }
+      }
+    },
     "Color option": {
       "extractionState": "manual",
       "localizations": {
@@ -503,6 +675,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coral"
+          }
+        }
+      }
+    },
+    "Couldn't reach iCloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo conectar con iCloud"
           }
         }
       }
@@ -1564,7 +1747,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enviar plan para aprobación"
+            "value": "Enviar el plan para su aprobación"
           }
         }
       }
@@ -1792,10 +1975,40 @@
     "The schedule was sent to %@ as one proposal covering %lld days. It will apply once they approve it.": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "The schedule was sent to %@ as one proposal covering 1 day. It will apply once they approve it."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "The schedule was sent to %@ as one proposal covering %lld days. It will apply once they approve it."
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El plan se envió a %1$@ como una única propuesta que abarca %2$lld días. Se aplicará cuando lo apruebe."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "El plan se envió a %1$@ como una única propuesta que abarca 1 día. Se aplicará cuando lo apruebe."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "El plan se envió a %1$@ como una única propuesta que abarca %2$lld días. Se aplicará cuando lo apruebe."
+                }
+              }
+            }
           }
         }
       }
@@ -1822,13 +2035,13 @@
         }
       }
     },
-    "They lose access right away and you can send a new invitation. The calendar and its history stay.": {
+    "They lose access immediately and the old invitation link stops working. The calendar and its history stay, and you can adjust all days freely until someone joins again.": {
       "extractionState": "manual",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Perderá el acceso de inmediato y podrás enviar una invitación nueva. El calendario y su historial se conservan."
+            "value": "Perderá el acceso de inmediato y el enlace de invitación antiguo dejará de funcionar. El calendario y su historial se conservan, y podrás ajustar todos los días libremente hasta que alguien se una de nuevo."
           }
         }
       }
@@ -1902,10 +2115,40 @@
     "This will update %lld days.": {
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "This will update 1 day."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "This will update %lld days."
+                }
+              }
+            }
+          }
+        },
         "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esto actualizará %lld días."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Esto actualizará 1 día."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Esto actualizará %lld días."
+                }
+              }
+            }
           }
         }
       }
@@ -2104,6 +2347,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Te estás uniendo a un calendario de custodia compartida."
+          }
+        }
+      }
+    },
+    "Your calendar was found but couldn't be loaded. Please check your connection and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se encontró tu calendario, pero no se pudo cargar. Comprueba tu conexión e inténtalo de nuevo."
           }
         }
       }

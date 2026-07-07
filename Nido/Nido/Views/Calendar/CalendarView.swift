@@ -205,7 +205,7 @@ struct CalendarView: View {
                     if pendingInMonth {
                         HStack(spacing: 4) {
                             Image(systemName: "clock.fill")
-                                .font(.system(size: 9))
+                                .font(.caption2)
                                 .foregroundStyle(.orange)
                             Text("awaiting approval")
                                 .font(.caption2)
@@ -419,9 +419,10 @@ struct DayCell: View {
             .overlay(alignment: .topTrailing) {
                 if isPending {
                     Image(systemName: "clock.fill")
-                        .font(.system(size: 9))
+                        .font(.caption2)
+                        .imageScale(.small)
                         .foregroundStyle(.orange)
-                        .padding(3)
+                        .padding(2)
                 }
             }
         }

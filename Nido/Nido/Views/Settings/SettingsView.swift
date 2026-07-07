@@ -75,7 +75,7 @@ struct SettingsView: View {
                 }
                 Button("Keep it", role: .cancel) {}
             } message: {
-                Text("They lose access right away and you can send a new invitation. The calendar and its history stay.")
+                Text("They lose access immediately and the old invitation link stops working. The calendar and its history stay, and you can adjust all days freely until someone joins again.")
             }
         }
     }

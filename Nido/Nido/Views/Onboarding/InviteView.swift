@@ -8,6 +8,7 @@ struct InviteView: View {
     var isOnboarding: Bool
 
     var body: some View {
+        @Bindable var store = store
         ScrollView {
             VStack(spacing: 24) {
                 VStack(spacing: 8) {
@@ -62,6 +63,17 @@ struct InviteView: View {
         .background(Theme.background)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        // Mints a fresh invitation when the previous one was closed
+        // (e.g. after removing a co-parent).
+        .task { await store.ensureInvitationReady() }
+        // Errors must be able to present when this view sits in a sheet.
+        .alert(item: $store.alert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
 }
 

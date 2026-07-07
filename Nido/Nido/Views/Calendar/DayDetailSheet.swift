@@ -229,11 +229,14 @@ struct DayDetailSheet: View {
     private func assignButton(for role: ParentRole, family: Family) -> some View {
         let isCurrent = owner == role
         let isDirect = store.canEditDirectly(dayKey, settingTo: role)
+        // Giving a day to the other parent can't be undone without their
+        // approval, so keep the sheet open to make a mis-tap visible.
+        let dismissAfter = role == store.myRole || family.partnerHasJoined == false
         return Button {
             if isDirect {
                 act {
                     await store.setDayDirectly(dayKey, to: role)
-                    saveNoteAndDismiss()
+                    if dismissAfter { saveNoteAndDismiss() }
                 }
             } else {
                 withAnimation { proposeTarget = role }
