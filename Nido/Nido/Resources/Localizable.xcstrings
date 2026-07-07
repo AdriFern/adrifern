@@ -1,0 +1,1014 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%lld" } }
+      }
+    },
+    "%lld·%lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld·%2$lld" } }
+      }
+    },
+    "%lld unassigned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%lld sin asignar" } }
+      }
+    },
+    "%lld days were filled in." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Se rellenaron %lld días." } }
+      }
+    },
+    "%lld days were sent to %@ for approval." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld días se enviaron a %2$@ para su aprobación." } }
+      }
+    },
+    "%@ approved your schedule change." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%@ aprobó tu cambio de calendario." } }
+      }
+    },
+    "%@ declined your schedule change." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%@ rechazó tu cambio de calendario." } }
+      }
+    },
+    "%@ is with %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ está con %2$@" } }
+      }
+    },
+    "%@ proposed that this day goes to %@. You can respond in the Requests tab." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ propuso que este día pase a %2$@. Puedes responder en la pestaña Solicitudes." } }
+      }
+    },
+    "%@ proposes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%@ propone" } }
+      }
+    },
+    "%@ proposes a change for %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ propone un cambio para el %2$@." } }
+      }
+    },
+    "%@ proposes changes to %lld days." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ propone cambios en %2$lld días." } }
+      }
+    },
+    "+%lld more days" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "+%lld días más" } }
+      }
+    },
+    "—" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "—" } }
+      }
+    },
+    "“%@”" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "«%@»" } }
+      }
+    },
+    "2 days, 2 days, then the weekend — swapping each week" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "2 días, 2 días y el fin de semana, alternando cada semana" } }
+      }
+    },
+    "2-2-3 rotation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rotación 2-2-3" } }
+      }
+    },
+    "Add a message (optional)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añade un mensaje (opcional)" } }
+      }
+    },
+    "Allow camera access for Nido in the iPhone Settings app to scan the invitation code." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Permite el acceso a la cámara para Nido en los Ajustes del iPhone para escanear el código de invitación." } }
+      }
+    },
+    "Almost there!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¡Ya casi está!" } }
+      }
+    },
+    "Already connected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ya conectado" } }
+      }
+    },
+    "Alternating weeks" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Semanas alternas" } }
+      }
+    },
+    "Apply schedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aplicar plan" } }
+      }
+    },
+    "Approve" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aprobar" } }
+      }
+    },
+    "Approved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aprobada" } }
+      }
+    },
+    "Ask to have this day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pedir este día" } }
+      }
+    },
+    "Ask your co-parent to send you the invitation from their Nido app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pídele al otro progenitor que te envíe la invitación desde su app Nido." } }
+      }
+    },
+    "Assign days on the calendar to see statistics." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Asigna días en el calendario para ver las estadísticas." } }
+      }
+    },
+    "Awaiting approval" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pendiente de aprobación" } }
+      }
+    },
+    "Back to today" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Volver a hoy" } }
+      }
+    },
+    "Calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Calendario" } }
+      }
+    },
+    "Calendar unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Calendario no disponible" } }
+      }
+    },
+    "Camera access needed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Se necesita acceso a la cámara" } }
+      }
+    },
+    "Cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } }
+      }
+    },
+    "Cancel request" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar solicitud" } }
+      }
+    },
+    "Cancelled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelada" } }
+      }
+    },
+    "Changes to assigned days need %@'s approval." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los cambios en días asignados necesitan la aprobación de %@." } }
+      }
+    },
+    "Child" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hijo/a" } }
+      }
+    },
+    "Co-parent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El otro progenitor" } }
+      }
+    },
+    "Color option" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Opción de color" } }
+      }
+    },
+    "Connected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conectado" } }
+      }
+    },
+    "Create calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Crear calendario" } }
+      }
+    },
+    "Custody calendar for %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Calendario de custodia de %@" } }
+      }
+    },
+    "Dates" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Fechas" } }
+      }
+    },
+    "Day %lld, %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Día %1$lld, %2$@" } }
+      }
+    },
+    "Day %lld, unassigned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Día %lld, sin asignar" } }
+      }
+    },
+    "Days of the week for %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Días de la semana para %@" } }
+      }
+    },
+    "Days with each parent in %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Días con cada progenitor en %@" } }
+      }
+    },
+    "Decline" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rechazar" } }
+      }
+    },
+    "Declined" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rechazada" } }
+      }
+    },
+    "Delete for both of us" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar para ambos" } }
+      }
+    },
+    "Delete shared calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar calendario compartido" } }
+      }
+    },
+    "Delete this shared calendar?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Eliminar este calendario compartido?" } }
+      }
+    },
+    "Done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Listo" } }
+      }
+    },
+    "e.g. Adrián" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej., Adrián" } }
+      }
+    },
+    "e.g. Dentist at 5pm, swim bag packed…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej., Dentista a las 17:00, mochila de natación lista…" } }
+      }
+    },
+    "e.g. Luna" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej., Luna" } }
+      }
+    },
+    "e.g. María" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej., María" } }
+      }
+    },
+    "Every other weekend" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Fines de semana alternos" } }
+      }
+    },
+    "Everything already matched this schedule — nothing to change." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Todo coincidía ya con este plan; no hay nada que cambiar." } }
+      }
+    },
+    "Everything is stored in your private iCloud and shared only between the two of you. Notifications arrive automatically when something changes." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Todo se guarda en tu iCloud privado y solo se comparte entre vosotros dos. Las notificaciones llegan automáticamente cuando algo cambia." } }
+      }
+    },
+    "Family" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Familia" } }
+      }
+    },
+    "First turn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Primer turno" } }
+      }
+    },
+    "For you to approve" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Para tu aprobación" } }
+      }
+    },
+    "From" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desde" } }
+      }
+    },
+    "Give this day to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ceder este día a %@" } }
+      }
+    },
+    "Go to the calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ir al calendario" } }
+      }
+    },
+    "Got the invitation by message or email? Just tap the link — it opens Nido automatically." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Recibiste la invitación por mensaje o correo? Solo toca el enlace: Nido se abrirá automáticamente." } }
+      }
+    },
+    "History" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Historial" } }
+      }
+    },
+    "https://www.icloud.com/share/…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "https://www.icloud.com/share/…" } }
+      }
+    },
+    "I have an invitation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tengo una invitación" } }
+      }
+    },
+    "iCloud connects you both — everything stays private between you two." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "iCloud os conecta; todo queda en privado entre vosotros dos." } }
+      }
+    },
+    "iCloud needed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Se necesita iCloud" } }
+      }
+    },
+    "iCloud storage full" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Almacenamiento de iCloud lleno" } }
+      }
+    },
+    "iCloud sync" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sincronización con iCloud" } }
+      }
+    },
+    "Invitation QR code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Código QR de invitación" } }
+      }
+    },
+    "Invite your co-parent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Invita al otro progenitor" } }
+      }
+    },
+    "Join" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Unirme" } }
+      }
+    },
+    "Join our custody calendar on Nido" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Únete a nuestro calendario de custodia en Nido" } }
+      }
+    },
+    "Join your family's calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Únete al calendario de tu familia" } }
+      }
+    },
+    "Keep it" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conservar" } }
+      }
+    },
+    "Last synced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Última sincronización" } }
+      }
+    },
+    "Later" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Más tarde" } }
+      }
+    },
+    "Leave calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Salir del calendario" } }
+      }
+    },
+    "Leave shared calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Salir del calendario compartido" } }
+      }
+    },
+    "Leave this shared calendar?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Salir de este calendario compartido?" } }
+      }
+    },
+    "Let's set things up" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vamos a configurarlo" } }
+      }
+    },
+    "Me" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Yo" } }
+      }
+    },
+    "Month by month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mes a mes" } }
+      }
+    },
+    "Name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nombre" } }
+      }
+    },
+    "New change request" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nueva solicitud de cambio" } }
+      }
+    },
+    "Next month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mes siguiente" } }
+      }
+    },
+    "Nido" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nido" } }
+      }
+    },
+    "Nido — made for families who plan together. 🪺" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nido — hecho para familias que se organizan juntas. 🪺" } }
+      }
+    },
+    "Nido keeps your calendar in sync through iCloud. Please sign in to iCloud in the iPhone Settings app, then try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nido mantiene el calendario sincronizado a través de iCloud. Inicia sesión en iCloud en los Ajustes del iPhone y vuelve a intentarlo." } }
+      }
+    },
+    "No connection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sin conexión" } }
+      }
+    },
+    "No parent assigned yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aún sin asignar" } }
+      }
+    },
+    "No requests yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aún no hay solicitudes" } }
+      }
+    },
+    "Note for this day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nota para este día" } }
+      }
+    },
+    "Notes are visible to both parents." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Las notas son visibles para ambos progenitores." } }
+      }
+    },
+    "OK" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "OK" } }
+      }
+    },
+    "One full week each, taking turns" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Una semana completa cada uno, por turnos" } }
+      }
+    },
+    "One parent hosts weekdays, weekends alternate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Un progenitor tiene los días de diario y los fines de semana se alternan" } }
+      }
+    },
+    "Or paste the invitation link" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "O pega el enlace de invitación" } }
+      }
+    },
+    "Parent 1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Progenitor 1" } }
+      }
+    },
+    "Pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pendiente" } }
+      }
+    },
+    "Pick which weekdays belong to each parent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige qué días de la semana corresponden a cada progenitor" } }
+      }
+    },
+    "Please sign in to iCloud in Settings to use Nido." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en iCloud en Ajustes para usar Nido." } }
+      }
+    },
+    "Please sign in to iCloud in the iPhone Settings app to keep the calendar in sync." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en iCloud en los Ajustes del iPhone para mantener el calendario sincronizado." } }
+      }
+    },
+    "Preparing invitation…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Preparando la invitación…" } }
+      }
+    },
+    "Preview (first two weeks)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vista previa (dos primeras semanas)" } }
+      }
+    },
+    "Previous month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mes anterior" } }
+      }
+    },
+    "Propose: this day goes to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Propuesta: este día pasa a %@" } }
+      }
+    },
+    "Repeating schedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Plan recurrente" } }
+      }
+    },
+    "Request approved 🎉" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solicitud aprobada 🎉" } }
+      }
+    },
+    "Request declined" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solicitud rechazada" } }
+      }
+    },
+    "Requests" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solicitudes" } }
+      }
+    },
+    "Same days every week" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los mismos días cada semana" } }
+      }
+    },
+    "Save changes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardar cambios" } }
+      }
+    },
+    "Scan invitation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Escanear invitación" } }
+      }
+    },
+    "Scan QR code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Escanear código QR" } }
+      }
+    },
+    "Schedule applied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Plan aplicado" } }
+      }
+    },
+    "Schedule pattern update" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cambio por plan recurrente" } }
+      }
+    },
+    "Selected weekdays go to" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los días marcados son para" } }
+      }
+    },
+    "Send invitation link" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Enviar enlace de invitación" } }
+      }
+    },
+    "Send to %@ for approval" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Enviar a %@ para su aprobación" } }
+      }
+    },
+    "Set up a new calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Crear un calendario nuevo" } }
+      }
+    },
+    "Set up a repeating schedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Configurar un plan recurrente" } }
+      }
+    },
+    "Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ajustes" } }
+      }
+    },
+    "Show invitation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar invitación" } }
+      }
+    },
+    "Show less" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar menos" } }
+      }
+    },
+    "Show the invitation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar la invitación" } }
+      }
+    },
+    "Something went wrong" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Algo salió mal" } }
+      }
+    },
+    "Start using Nido" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Empezar a usar Nido" } }
+      }
+    },
+    "Stats" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Estadísticas" } }
+      }
+    },
+    "Sync now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sincronizar ahora" } }
+      }
+    },
+    "Syncing…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sincronizando…" } }
+      }
+    },
+    "That doesn't look like a valid Nido invitation." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Eso no parece una invitación válida de Nido." } }
+      }
+    },
+    "That link doesn't look like a Nido invitation." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ese enlace no parece una invitación de Nido." } }
+      }
+    },
+    "The invitation link could not be created. Please try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo crear el enlace de invitación. Inténtalo de nuevo." } }
+      }
+    },
+    "The shared calendar was deleted or your access was removed. You can create a new one or join another invitation." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El calendario compartido se eliminó o se retiró tu acceso. Puedes crear uno nuevo o unirte con otra invitación." } }
+      }
+    },
+    "The shared custody calendar that keeps both parents on the same page." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El calendario de custodia compartida que mantiene a ambos progenitores en sintonía." } }
+      }
+    },
+    "They scan the code or tap the link you send." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Escanea el código o toca el enlace que le envíes." } }
+      }
+    },
+    "They scan this code with their iPhone camera, or you can send them the link." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Puede escanear este código con la cámara de su iPhone, o envíale el enlace." } }
+      }
+    },
+    "This device is already part of a family calendar. To join a different one, first leave the current calendar in Settings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este dispositivo ya forma parte de un calendario familiar. Para unirte a otro, primero sal del calendario actual en Ajustes." } }
+      }
+    },
+    "This permanently deletes the calendar, requests and notes for both parents." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esto elimina permanentemente el calendario, las solicitudes y las notas para ambos progenitores." } }
+      }
+    },
+    "This shared calendar is no longer available." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este calendario compartido ya no está disponible." } }
+      }
+    },
+    "Unassigned days are filled in right away. Days that already belong to a parent will be sent to %@ for approval." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los días sin asignar se rellenan al momento. Los días que ya pertenecen a un progenitor se enviarán a %@ para su aprobación." } }
+      }
+    },
+    "Until" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hasta" } }
+      }
+    },
+    "Version" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Versión" } }
+      }
+    },
+    "Waiting for %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esperando a %@" } }
+      }
+    },
+    "Weekdays stay with" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los días de diario con" } }
+      }
+    },
+    "When either of you proposes a schedule change, it will show up here for the other to approve." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cuando cualquiera de los dos proponga un cambio, aparecerá aquí para que el otro lo apruebe." } }
+      }
+    },
+    "Who has %@ this day?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Con quién está %@ este día?" } }
+      }
+    },
+    "You proposed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Propusiste" } }
+      }
+    },
+    "You'll invite your co-parent in the next step." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Invitarás al otro progenitor en el siguiente paso." } }
+      }
+    },
+    "You'll lose access to the shared calendar until you're invited again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Perderás el acceso al calendario compartido hasta que te inviten de nuevo." } }
+      }
+    },
+    "You're joining %@'s calendar with %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Te estás uniendo al calendario de %1$@ con %2$@." } }
+      }
+    },
+    "You're joining a shared custody calendar." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Te estás uniendo a un calendario de custodia compartida." } }
+      }
+    },
+    "Your change couldn't be saved. Please check your internet connection and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo guardar el cambio. Comprueba tu conexión a internet e inténtalo de nuevo." } }
+      }
+    },
+    "Your child's name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El nombre de tu peque" } }
+      }
+    },
+    "Your co-parent hasn't joined yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El otro progenitor aún no se ha unido" } }
+      }
+    },
+    "Your co-parent hasn't joined yet. Send them the invitation so you can plan together." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El otro progenitor aún no se ha unido. Envíale la invitación para que podáis organizaros juntos." } }
+      }
+    },
+    "Your co-parent installs Nido on their iPhone." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El otro progenitor instala Nido en su iPhone." } }
+      }
+    },
+    "Your color" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu color" } }
+      }
+    },
+    "Your color on the calendar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu color en el calendario" } }
+      }
+    },
+    "Your iCloud storage is full, so changes can't be saved right now." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu almacenamiento de iCloud está lleno, así que ahora mismo no se pueden guardar cambios." } }
+      }
+    },
+    "Your name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu nombre" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
