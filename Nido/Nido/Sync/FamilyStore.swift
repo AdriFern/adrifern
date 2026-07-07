@@ -346,6 +346,19 @@ final class FamilyStore {
             return
         }
 
+        // Rejoin from the same iCloud account with a completed profile
+        // (reinstall / new phone): everything is already set up, so go
+        // straight back to the calendar instead of re-running onboarding.
+        if isRejoin, family?.partnerHasJoined == true {
+            markSetupComplete(role: .parentB, zoneOwnerName: ownerName)
+            joinNeedsProfile = false
+            defaults.set(false, forKey: Keys.joinNeedsProfile)
+            await finishSetupSideEffects()
+            saveCache()
+            phase = .ready
+            return
+        }
+
         joinNeedsProfile = true
         defaults.set(true, forKey: Keys.joinNeedsProfile)
         phase = .onboarding
@@ -883,7 +896,7 @@ final class FamilyStore {
             let shareID = service.recordID(forName: CKRecordNameZoneWideShare)
             do {
                 try await service.save(records: [], deleting: [shareID])
-            } catch let error as CKError where error.code == .unknownItem {
+            } catch let error where Self.normalizedCKErrorCode(error) == .unknownItem {
                 // Share already gone — revocation is already effective.
             }
 
