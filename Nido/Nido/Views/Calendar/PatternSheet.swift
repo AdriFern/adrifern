@@ -55,13 +55,22 @@ struct PatternSheet: View {
 
                     footerNote
 
+                    if daysThatWouldChange > 0 {
+                        Text("This will update \(daysThatWouldChange) days.")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+
                     Button {
                         applyPattern()
                     } label: {
                         if isApplying {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Apply schedule")
+                            Text(store.family?.partnerHasJoined == true
+                                 ? String(localized: "Send schedule for approval")
+                                 : String(localized: "Apply schedule"))
                         }
                     }
                     .buttonStyle(PrimaryButtonStyle())
@@ -84,6 +93,29 @@ struct PatternSheet: View {
                     message: Text(summary.text),
                     dismissButton: .default(Text("OK")) { dismiss() }
                 )
+            }
+            // Errors must be able to present while this sheet is open.
+            .alert(item: storeAlertBinding) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
+        }
+    }
+
+    private var storeAlertBinding: Binding<FamilyStore.AppAlert?> {
+        @Bindable var store = store
+        return $store.alert
+    }
+
+    /// Days the current proposal would actually change (excluding pending ones).
+    private var daysThatWouldChange: Int {
+        proposal.reduce(into: 0) { count, entry in
+            if store.assignments[entry.key] != entry.value,
+               !store.pendingDateKeys.contains(entry.key) {
+                count += 1
             }
         }
     }
@@ -180,7 +212,7 @@ struct PatternSheet: View {
                         Text(symbols[weekday - 1])
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 40)
+                            .frame(minHeight: 40)
                             .background(
                                 selected ? Color.accentColor : Theme.cardBackground,
                                 in: RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -214,8 +246,9 @@ struct PatternSheet: View {
                         let owner = proposal[key]
                         VStack(spacing: 3) {
                             Text(dayNumberLabel(for: key))
-                                .font(.system(size: 9, weight: .medium))
+                                .font(.caption2)
                                 .foregroundStyle(.secondary)
+                                .minimumScaleFactor(0.6)
                             Circle()
                                 .fill(owner.map { Color(hex: family.colorHex(of: $0)) } ?? Color(.systemGray4))
                                 .frame(width: 12, height: 12)
@@ -238,7 +271,11 @@ struct PatternSheet: View {
 
     private var footerNote: some View {
         Label {
-            Text("If any day would change hands, the whole schedule is sent to \(store.otherName) as one proposal — nothing is applied until they approve it. Otherwise it's filled in right away.")
+            if store.family?.partnerHasJoined == true {
+                Text("The schedule is sent to \(store.otherName) as one proposal — nothing changes until they approve it. Days in pending requests are left untouched.")
+            } else {
+                Text("Until your co-parent joins, the schedule is filled in right away and you can adjust it freely.")
+            }
         } icon: {
             Image(systemName: "info.circle")
         }

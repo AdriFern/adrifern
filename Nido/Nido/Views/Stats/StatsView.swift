@@ -127,7 +127,7 @@ struct StatsView: View {
             }
             Text("\(count)")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-            Text(total > 0 ? "\(Int((Double(count) / Double(total) * 100).rounded()))%" : "—")
+            Text(verbatim: total > 0 ? "\(Int((Double(count) / Double(total) * 100).rounded()))%" : "—")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

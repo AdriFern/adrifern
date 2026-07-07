@@ -320,17 +320,6 @@
         }
       }
     },
-    "Ask to have this day": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pedir este día"
-          }
-        }
-      }
-    },
     "Ask your co-parent to send you the invitation from their Nido app.": {
       "extractionState": "manual",
       "localizations": {
@@ -738,17 +727,6 @@
         }
       }
     },
-    "Give this day to %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ceder este día a %@"
-          }
-        }
-      }
-    },
     "Go to the calendar": {
       "extractionState": "manual",
       "localizations": {
@@ -800,17 +778,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tengo una invitación"
-          }
-        }
-      }
-    },
-    "If any day would change hands, the whole schedule is sent to %@ as one proposal — nothing is applied until they approve it. Otherwise it's filled in right away.": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Si algún día cambiara de manos, el plan completo se envía a %@ como una única propuesta; no se aplica nada hasta que lo apruebe. Si no, se rellena al momento."
           }
         }
       }
@@ -1009,6 +976,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nombre"
+          }
+        }
+      }
+    },
+    "Needs approval": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesita aprobación"
           }
         }
       }
@@ -1349,6 +1327,39 @@
         }
       }
     },
+    "Remove %@ from the calendar?": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar a %@ del calendario?"
+          }
+        }
+      }
+    },
+    "Remove co-parent": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar al otro progenitor"
+          }
+        }
+      }
+    },
+    "Remove co-parent…": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar al otro progenitor…"
+          }
+        }
+      }
+    },
     "Repeating schedule": {
       "extractionState": "manual",
       "localizations": {
@@ -1543,6 +1554,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enviar enlace de invitación"
+          }
+        }
+      }
+    },
+    "Send schedule for approval": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar plan para aprobación"
           }
         }
       }
@@ -1756,6 +1778,17 @@
         }
       }
     },
+    "The schedule is sent to %@ as one proposal — nothing changes until they approve it. Days in pending requests are left untouched.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El plan se envía a %@ como una única propuesta; nada cambia hasta que lo apruebe. Los días con solicitudes pendientes no se tocan."
+          }
+        }
+      }
+    },
     "The schedule was sent to %@ as one proposal covering %lld days. It will apply once they approve it.": {
       "extractionState": "manual",
       "localizations": {
@@ -1785,6 +1818,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "El calendario de custodia compartida que mantiene a ambos progenitores en sintonía."
+          }
+        }
+      }
+    },
+    "They lose access right away and you can send a new invitation. The calendar and its history stay.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perderá el acceso de inmediato y podrás enviar una invitación nueva. El calendario y su historial se conservan."
           }
         }
       }
@@ -1855,6 +1899,17 @@
         }
       }
     },
+    "This will update %lld days.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto actualizará %lld días."
+          }
+        }
+      }
+    },
     "Unassigned": {
       "extractionState": "manual",
       "localizations": {
@@ -1888,13 +1943,24 @@
         }
       }
     },
-    "Until %@ joins, you can adjust days freely.": {
+    "Until your co-parent joins, the schedule is filled in right away and you can adjust it freely.": {
       "extractionState": "manual",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hasta que %@ se una, puedes ajustar los días libremente."
+            "value": "Hasta que el otro progenitor se una, el plan se rellena al momento y puedes ajustarlo libremente."
+          }
+        }
+      }
+    },
+    "Until your co-parent joins, you can adjust days freely.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta que el otro progenitor se una, puedes ajustar los días libremente."
           }
         }
       }
@@ -1965,6 +2031,17 @@
         }
       }
     },
+    "You can clear this day, but giving it to %@ needs their approval.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes dejar este día sin asignar, pero pasárselo a %@ necesita su aprobación."
+          }
+        }
+      }
+    },
     "You proposed": {
       "extractionState": "manual",
       "localizations": {
@@ -1987,17 +2064,6 @@
         }
       }
     },
-    "You set this day yourself, so you can still adjust it freely.": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este día lo asignaste tú, así que puedes ajustarlo libremente."
-          }
-        }
-      }
-    },
     "You'll invite your co-parent in the next step.": {
       "extractionState": "manual",
       "localizations": {
@@ -2009,13 +2075,13 @@
         }
       }
     },
-    "You'll lose access to the shared calendar until you're invited again.": {
+    "You'll lose access to the shared calendar. To join again later, %@ will need to remove you in their Settings and send a new invitation.": {
       "extractionState": "manual",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Perderás el acceso al calendario compartido hasta que te inviten de nuevo."
+            "value": "Perderás el acceso al calendario compartido. Para unirte de nuevo más adelante, %@ tendrá que quitarte en sus Ajustes y enviarte una invitación nueva."
           }
         }
       }
@@ -2192,6 +2258,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "p. ej., María"
+          }
+        }
+      }
+    },
+    "has a note": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tiene una nota"
           }
         }
       }

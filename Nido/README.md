@@ -2,13 +2,13 @@
 
 Nido is a simple, friendly iPhone app for separated parents to coordinate custody of their child:
 
-- **Tap-to-assign calendar** — each parent has a color; tap any day to record who has your child.
-- **Approval workflow** — once a day is assigned, changing it (in either direction) requires the other parent's approval. Proposals land in a Requests inbox with Approve / Decline buttons.
-- **Repeating schedules** — apply common patterns in seconds: alternating weeks, 2-2-3 rotation, every other weekend, or a custom weekly split.
+- **Tap-to-assign calendar** — each parent has a color; tap any unassigned day to record who has your child.
+- **Approval workflow** — moving a day to the other parent, or changing a day they recorded or that was agreed through a request, requires their approval. Proposals land in a Requests inbox with Approve / Decline buttons (or respond right on the day). Days you recorded for yourself stay yours to clear.
+- **Repeating schedules** — apply common patterns in seconds: alternating weeks, 2-2-3 rotation, every other weekend, or a custom weekly split. Once both parents are connected, a bulk schedule always goes to the other parent as one all-or-nothing proposal.
 - **Notes on days** — "Dentist at 5pm", "swim bag packed" — visible to both parents.
 - **Statistics** — days with each parent per month and per year, with percentages.
 - **Notifications** — a push arrives when the calendar changes, plus detailed alerts ("María proposes a change for Sat, Jul 12") generated on refresh. iOS may delay pushes for force-quit apps; opening the app always syncs.
-- **Private by design** — data lives in the creator's private iCloud and is shared via CloudKit sharing. The app enforces a single co-parent: once someone has joined, the invitation is rejected for anyone else. Still, treat the invitation link like a house key and send it only to your co-parent. No third-party servers, no accounts, no subscription.
+- **Private by design** — data lives in the creator's private iCloud and is shared via CloudKit sharing. As soon as your co-parent joins, the invitation link is closed at the iCloud level so nobody else can ever use it. Until then, treat it like a house key and send it only to your co-parent. No third-party servers, no accounts, no subscription.
 - **Invitations by QR code or link** — the co-parent scans a QR code or taps a link to join.
 - **Reinstall-proof** — "Restore an existing calendar" reconnects either parent after a new phone or reinstall.
 - **English + Spanish**, following the iPhone's language automatically.
@@ -47,8 +47,8 @@ Two options:
 1. **Parent 1** opens Nido → *Set up a new calendar* → enters their name, the child's name, and picks a color.
 2. Nido shows an **invitation QR code**. Parent 2 installs Nido, opens *I have an invitation*, and scans the code (or taps the link sent by Messages/email — or pastes it).
 3. Parent 2 enters their name and color. Both calendars are now live and in sync.
-4. Tap any **unassigned** day to record who has the child — or use the ✨ Schedule button to apply a repeating pattern. The other parent gets a heads-up notification for days you fill in directly, and days *you* set yourself stay freely adjustable by you.
-5. To change a day the **other parent set or that was agreed through a request**, tap it and propose the change; the other parent approves or declines it (from the Requests tab or right on the day). A day never changes hands without both of you agreeing, and if a repeating schedule would move existing days, the entire schedule is sent as one all-or-nothing proposal.
+4. Tap any **unassigned** day to record who has the child — the other parent gets a heads-up notification. Use the ✨ Schedule button for repeating patterns: while you're solo they apply instantly; once your co-parent has joined, the whole schedule goes to them as **one proposal** and nothing changes until they approve it.
+5. To move any assigned day **to the other parent** — or to change a day they recorded or that was agreed through a request — tap it and send the proposal; they approve or decline it from the Requests tab or right on the day. A day never moves to a parent's schedule without their side having recorded or approved it. Days you recorded for yourself can still be cleared by you directly.
 
 ## Project layout
 
@@ -68,7 +68,8 @@ Nido/
 ## Privacy & security
 
 - All data is stored in the **calendar creator's private iCloud database** inside a dedicated record zone shared through CloudKit.
-- The invitation link is the only way in. The app refuses the invitation once a co-parent has joined (rejoining from the same iCloud account is always allowed), but the link itself stays technically valid on Apple's side — treat it like a house key and send it directly to your co-parent only.
+- The invitation link is the only way in. Once your co-parent joins, the share's public permission is revoked on iCloud, so the link goes dead for everyone else; rejoining from the same iCloud account remains possible. Before the join happens, treat the link like a house key and send it directly to your co-parent only.
+- The calendar creator can disconnect the co-parent at any time (Settings → Remove co-parent), which revokes their access immediately and re-opens the invitation for a fresh start — the calendar and its history stay.
 - Apple's CloudKit handles authentication (iCloud accounts), encryption in transit, and at rest.
 - The app collects **zero analytics** and talks to no servers other than iCloud.
 
@@ -81,4 +82,5 @@ Nido/
 | Changes don't appear on the other phone | Pull down the calendar to refresh. Push can take a moment; foreground refresh always fetches. |
 | Notifications don't arrive | Notifications require accepting the permission prompt and a build with the push entitlement (device, not simulator). iOS also throttles pushes to force-quit apps — reopening the app always catches up. |
 | Reinstalled the app / new phone | On the welcome screen choose **Restore an existing calendar** — it finds your calendar (owned or shared) on the same iCloud account. |
+| Co-parent left, or switched iCloud accounts, and can't rejoin | The calendar creator taps Settings → **Remove co-parent**, then sends a fresh invitation. |
 | Building for TestFlight works but the app can't see data | Deploy the CloudKit schema to Production in the CloudKit Console (see above). |

@@ -60,14 +60,21 @@ final class FamilyStore {
         requests.filter { !$0.isPending }.sorted { ($0.resolvedAt ?? $0.createdAt) > ($1.resolvedAt ?? $1.createdAt) }
     }
 
-    /// A day can be changed without approval while it has no pending request
-    /// AND it is unassigned, or was directly set by me (self-correction),
-    /// or the co-parent hasn't joined yet (solo setup mode).
-    func canEditDirectly(_ dateKey: String) -> Bool {
+    /// Whether a day can be set to `newOwner` (nil = cleared) without the
+    /// other parent's approval. The rules, once both parents have joined:
+    /// - a day inside a pending request is never directly editable;
+    /// - an unassigned day can be recorded freely by either parent;
+    /// - a day that was directly recorded for me stays mine to adjust
+    ///   (keep or clear), but handing it to the other parent needs approval;
+    /// - days recorded for the other parent or agreed through a request
+    ///   only change via approval.
+    /// While the co-parent hasn't joined, everything is freely editable.
+    func canEditDirectly(_ dateKey: String, settingTo newOwner: ParentRole?) -> Bool {
         guard !pendingDateKeys.contains(dateKey) else { return false }
-        if assignments[dateKey] == nil { return true }
         if family?.partnerHasJoined == false { return true }
-        return directAssigner[dateKey] == myRole
+        if assignments[dateKey] == nil { return true }
+        guard directAssigner[dateKey] == myRole else { return false }
+        return newOwner != otherRole
     }
 
     // MARK: - Private
@@ -84,6 +91,7 @@ final class FamilyStore {
         static let shareURL = "nido.shareURL"
         static let requestStatuses = "nido.requestStatuses"
         static let joinNeedsProfile = "nido.joinNeedsProfile"
+        static let shareLocked = "nido.shareLocked"
     }
 
     init() {
@@ -191,44 +199,63 @@ final class FamilyStore {
 
         // Owner path: a family record in my private database.
         service.configure(isOwner: true, zoneOwnerName: nil)
-        if let record = try? await service.database.record(for: service.recordID(forName: Family.recordName)),
-           let existing = Family(record: record) {
-            family = existing
-            myRole = .parentA
-            markSetupComplete(role: .parentA, zoneOwnerName: nil)
-            if let share = try? await service.fetchShare(), let url = share.url {
-                shareURL = url
-                UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
-            }
-            await finishSetupSideEffects()
-            phase = .ready
-            await refresh(silent: true)
-            saveCache()
-            return true
-        }
-
-        // Participant path: a family zone shared with me.
-        if let zones = try? await service.container.sharedCloudDatabase.allRecordZones(),
-           let zone = zones.first(where: { $0.zoneID.zoneName == CloudKitService.zoneName }) {
-            service.configure(isOwner: false, zoneOwnerName: zone.zoneID.ownerName)
-            myRole = .parentB
-            hasZoneAccess = true
-            let defaults = UserDefaults.standard
-            defaults.set(ParentRole.parentB.rawValue, forKey: Keys.role)
-            defaults.set(zone.zoneID.ownerName, forKey: Keys.zoneOwnerName)
-            await refresh(silent: true)
-            if family != nil {
-                if family?.partnerHasJoined == true {
-                    markSetupComplete(role: .parentB, zoneOwnerName: zone.zoneID.ownerName)
-                    phase = .ready
-                } else {
-                    joinNeedsProfile = true
-                    defaults.set(true, forKey: Keys.joinNeedsProfile)
+        do {
+            let record = try await service.database.record(for: service.recordID(forName: Family.recordName))
+            if let existing = Family(record: record) {
+                family = existing
+                myRole = .parentA
+                markSetupComplete(role: .parentA, zoneOwnerName: nil)
+                if let share = try? await service.fetchShare(), let url = share.url {
+                    shareURL = url
+                    UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
                 }
                 await finishSetupSideEffects()
+                phase = .ready
+                await refresh(silent: true)
                 saveCache()
                 return true
             }
+        } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
+            // No owned calendar — fall through to the participant path.
+        } catch {
+            // A transient failure must not read as "nothing to restore".
+            presentError(error)
+            return false
+        }
+
+        // Participant path: a family zone shared with me.
+        do {
+            let zones = try await service.container.sharedCloudDatabase.allRecordZones()
+            if let zone = zones.first(where: { $0.zoneID.zoneName == CloudKitService.zoneName }) {
+                service.configure(isOwner: false, zoneOwnerName: zone.zoneID.ownerName)
+                myRole = .parentB
+                hasZoneAccess = true
+                let defaults = UserDefaults.standard
+                defaults.set(ParentRole.parentB.rawValue, forKey: Keys.role)
+                defaults.set(zone.zoneID.ownerName, forKey: Keys.zoneOwnerName)
+                await refresh(silent: true)
+                if family != nil {
+                    if family?.partnerHasJoined == true {
+                        markSetupComplete(role: .parentB, zoneOwnerName: zone.zoneID.ownerName)
+                        phase = .ready
+                    } else {
+                        joinNeedsProfile = true
+                        defaults.set(true, forKey: Keys.joinNeedsProfile)
+                    }
+                    await finishSetupSideEffects()
+                    saveCache()
+                    return true
+                }
+                // Zone found but nothing synced: undo the partial setup.
+                defaults.removeObject(forKey: Keys.role)
+                defaults.removeObject(forKey: Keys.zoneOwnerName)
+                myRole = .parentA
+            }
+        } catch {
+            presentError(error)
+            service.configure(isOwner: true, zoneOwnerName: nil)
+            hasZoneAccess = false
+            return false
         }
 
         service.configure(isOwner: true, zoneOwnerName: nil)
@@ -400,6 +427,7 @@ final class FamilyStore {
                 } else {
                     notifyAboutChanges(previousStatuses: previousStatuses, remotelyChangedDays: remotelyChangedDays)
                 }
+                await lockShareIfNeeded()
                 return
             } catch {
                 let code = Self.normalizedCKErrorCode(error)
@@ -417,10 +445,30 @@ final class FamilyStore {
                     handleZoneGone()
                     return
                 }
+                if retriedAfterTokenReset {
+                    // The full refetch after a token reset failed; restore the
+                    // cached data so the UI doesn't sit empty until next sync.
+                    loadCache()
+                }
                 if !silent { presentError(error) }
                 return
             }
         }
+    }
+
+    /// Once the co-parent has joined, kill the public invitation link at the
+    /// platform level so it can't be used by anyone else. Runs once (owner only).
+    private func lockShareIfNeeded() async {
+        guard myRole == .parentA,
+              family?.partnerHasJoined == true,
+              !UserDefaults.standard.bool(forKey: Keys.shareLocked)
+        else { return }
+        guard let share = try? await service.fetchShare() else { return }
+        if share.publicPermission != .none {
+            share.publicPermission = .none
+            guard (try? await service.save(records: [share])) != nil else { return }
+        }
+        UserDefaults.standard.set(true, forKey: Keys.shareLocked)
     }
 
     /// Zone-level CloudKit errors sometimes arrive wrapped in a partialFailure.
@@ -509,17 +557,18 @@ final class FamilyStore {
 
     // MARK: - Day actions
 
-    /// Directly sets or clears a day, when allowed (see `canEditDirectly`):
-    /// unassigned days, days I set myself, or anything while flying solo.
+    /// Directly sets or clears a day, when allowed (see `canEditDirectly`).
+    /// Editability follows the day: a direct assignment is stamped with the
+    /// *receiving* parent, so whoever hosts the day can keep adjusting it.
     func setDayDirectly(_ dateKey: String, to owner: ParentRole?) async {
-        guard canEditDirectly(dateKey) else { return }
+        guard canEditDirectly(dateKey, settingTo: owner) else { return }
         let previousOwner = assignments[dateKey]
         let previousAssigner = directAssigner[dateKey]
         guard previousOwner != owner else { return }
 
         if let owner {
             assignments[dateKey] = owner
-            directAssigner[dateKey] = myRole
+            directAssigner[dateKey] = owner
         } else {
             assignments.removeValue(forKey: dateKey)
             directAssigner.removeValue(forKey: dateKey)
@@ -527,7 +576,7 @@ final class FamilyStore {
         do {
             if let owner {
                 let record = service.newRecord(type: RecordType.dayAssignment, name: DayAssignment.recordName(for: dateKey))
-                DayAssignment(dateKey: dateKey, owner: owner, assignedBy: myRole).apply(to: record)
+                DayAssignment(dateKey: dateKey, owner: owner, assignedBy: owner).apply(to: record)
                 try await service.save(records: [record])
             } else {
                 try await service.save(records: [], deleting: [service.recordID(forName: DayAssignment.recordName(for: dateKey))])
@@ -594,6 +643,9 @@ final class FamilyStore {
 
     func approve(_ request: ChangeRequest) async {
         guard request.isPending, request.requester != myRole else { return }
+        // Sync first so the stale-day validation below runs against the
+        // freshest state we can get, not a lagging local cache.
+        await refresh(silent: true)
         do {
             // Guard against the cancel-vs-approve race: confirm the request
             // is still pending on the server before applying anything.
@@ -700,15 +752,14 @@ final class FamilyStore {
         var skippedPending: Int
     }
 
-    /// Applies a generated schedule. If every affected day is freely editable,
-    /// it is applied immediately; if ANY day would change hands, the whole
-    /// pattern becomes one approval request (all-or-nothing, so a decline can
-    /// never leave a half-applied patchwork). Days inside pending requests
-    /// are always skipped.
+    /// Applies a generated schedule. While flying solo it is applied
+    /// immediately; once both parents are connected, a bulk schedule always
+    /// becomes ONE approval request (all-or-nothing) — mass changes are never
+    /// unilateral, and a decline can never leave a half-applied patchwork.
+    /// Days inside pending requests are always skipped.
     func applyPattern(_ proposal: [String: ParentRole]) async -> PatternOutcome? {
         var differing: [(String, ParentRole)] = []
         var skippedPending = 0
-        var needsApproval = false
 
         for (dateKey, owner) in proposal.sorted(by: { $0.key < $1.key }) {
             if assignments[dateKey] == owner { continue }
@@ -717,7 +768,6 @@ final class FamilyStore {
                 continue
             }
             differing.append((dateKey, owner))
-            if !canEditDirectly(dateKey) { needsApproval = true }
         }
 
         guard !differing.isEmpty else {
@@ -725,7 +775,7 @@ final class FamilyStore {
         }
 
         do {
-            if needsApproval {
+            if family?.partnerHasJoined == true {
                 let changes = differing.map { key, owner in
                     DayChange(dateKey: key, newOwner: owner, oldOwner: assignments[key])
                 }
@@ -736,7 +786,7 @@ final class FamilyStore {
                 var records: [CKRecord] = []
                 for (key, owner) in differing {
                     let record = service.newRecord(type: RecordType.dayAssignment, name: DayAssignment.recordName(for: key))
-                    DayAssignment(dateKey: key, owner: owner, assignedBy: myRole).apply(to: record)
+                    DayAssignment(dateKey: key, owner: owner, assignedBy: owner).apply(to: record)
                     records.append(record)
                 }
                 for chunk in records.chunked(into: 200) {
@@ -744,7 +794,7 @@ final class FamilyStore {
                 }
                 for (key, owner) in differing {
                     assignments[key] = owner
-                    directAssigner[key] = myRole
+                    directAssigner[key] = owner
                 }
                 saveCache()
                 return PatternOutcome(appliedDirectly: differing.count, sentForApproval: 0, skippedPending: skippedPending)
@@ -787,6 +837,34 @@ final class FamilyStore {
         do {
             try await service.deleteZone()
             resetLocalState()
+        } catch {
+            presentError(error)
+        }
+    }
+
+    /// Owner-only: disconnects the co-parent (they lose access immediately),
+    /// clears their profile slot, and re-opens the invitation so a new — or
+    /// the same — person can join again. The calendar and history stay.
+    func removeCoParent() async {
+        guard myRole == .parentA else { return }
+        do {
+            if let share = try? await service.fetchShare() {
+                for participant in share.participants where participant.role != .owner {
+                    share.removeParticipant(participant)
+                }
+                share.publicPermission = .readWrite
+                try await service.save(records: [share])
+            }
+            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
+            record["nameB"] = ""
+            try await service.save(records: [record])
+
+            if var updated = family {
+                updated.nameB = ""
+                family = updated
+            }
+            UserDefaults.standard.set(false, forKey: Keys.shareLocked)
+            saveCache()
         } catch {
             presentError(error)
         }

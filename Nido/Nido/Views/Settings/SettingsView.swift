@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var isSavingProfile = false
     @State private var showInvite = false
     @State private var confirmLeave = false
+    @State private var confirmRemoveCoParent = false
+    @State private var isRemovingCoParent = false
 
     private var hasProfileChanges: Bool {
         guard let family = store.family else { return false }
@@ -57,7 +59,23 @@ struct SettingsView: View {
             } message: {
                 Text(store.myRole == .parentA
                      ? String(localized: "This permanently deletes the calendar, requests and notes for both parents.")
-                     : String(localized: "You'll lose access to the shared calendar until you're invited again."))
+                     : String(localized: "You'll lose access to the shared calendar. To join again later, \(store.otherName) will need to remove you in their Settings and send a new invitation."))
+            }
+            .confirmationDialog(
+                Text("Remove \(store.otherName) from the calendar?"),
+                isPresented: $confirmRemoveCoParent,
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Remove co-parent"), role: .destructive) {
+                    Task {
+                        isRemovingCoParent = true
+                        await store.removeCoParent()
+                        isRemovingCoParent = false
+                    }
+                }
+                Button("Keep it", role: .cancel) {}
+            } message: {
+                Text("They lose access right away and you can send a new invitation. The calendar and its history stay.")
             }
         }
     }
@@ -126,6 +144,18 @@ struct SettingsView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.green)
                             .labelStyle(.titleAndIcon)
+                    }
+                    if store.myRole == .parentA {
+                        Button(role: .destructive) {
+                            confirmRemoveCoParent = true
+                        } label: {
+                            if isRemovingCoParent {
+                                ProgressView()
+                            } else {
+                                Text("Remove co-parent…")
+                            }
+                        }
+                        .disabled(isRemovingCoParent)
                     }
                 } else if store.myRole == .parentA {
                     Button {

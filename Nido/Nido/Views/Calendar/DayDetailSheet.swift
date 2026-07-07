@@ -10,7 +10,7 @@ struct DayDetailSheet: View {
 
     @State private var noteText = ""
     @State private var noteLoaded = false
-    @State private var isProposing = false
+    @State private var proposeTarget: ParentRole?
     @State private var proposalMessage = ""
     @State private var isWorking = false
 
@@ -26,6 +26,7 @@ struct DayDetailSheet: View {
     }
 
     var body: some View {
+        @Bindable var store = store
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -33,12 +34,10 @@ struct DayDetailSheet: View {
 
                     if let pending = pendingChange {
                         pendingCard(pending)
-                    } else if store.canEditDirectly(dayKey) {
-                        directEditSection
-                    } else if isProposing {
+                    } else if proposeTarget != nil {
                         proposeSection
                     } else {
-                        actionSection
+                        whoSection
                     }
 
                     noteSection
@@ -55,6 +54,15 @@ struct DayDetailSheet: View {
                         Text("Done").bold()
                     }
                 }
+            }
+            // Errors must be able to present while this sheet is open;
+            // the root-level alert can't appear underneath a sheet.
+            .alert(item: $store.alert) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
         .onAppear {
@@ -170,9 +178,9 @@ struct DayDetailSheet: View {
         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
 
-    // MARK: - Direct editing (unassigned, self-set, or solo mode)
+    // MARK: - Who has the day (direct set, or hand-off into a proposal)
 
-    private var directEditSection: some View {
+    private var whoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let family = store.family {
                 Text("Who has \(family.childName) this day?")
@@ -182,7 +190,7 @@ struct DayDetailSheet: View {
                     assignButton(for: .parentA, family: family)
                     assignButton(for: .parentB, family: family)
                 }
-                if owner != nil {
+                if owner != nil, store.canEditDirectly(dayKey, settingTo: nil) {
                     Button {
                         act {
                             await store.setDayDirectly(dayKey, to: nil)
@@ -196,29 +204,39 @@ struct DayDetailSheet: View {
                     .frame(maxWidth: .infinity)
                     .disabled(isWorking)
                 }
-                Text(directEditFootnote(family: family))
+                Text(whoFootnote(family: family))
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
             }
         }
     }
 
-    private func directEditFootnote(family: Family) -> String {
+    private func whoFootnote(family: Family) -> String {
+        if !family.partnerHasJoined {
+            return String(localized: "Until your co-parent joins, you can adjust days freely.")
+        }
         if owner == nil {
             return String(localized: "Unassigned days can be filled in by either parent.")
         }
-        if !family.partnerHasJoined {
-            return String(localized: "Until \(store.otherName) joins, you can adjust days freely.")
+        if store.canEditDirectly(dayKey, settingTo: nil) {
+            return String(localized: "You can clear this day, but giving it to \(store.otherName) needs their approval.")
         }
-        return String(localized: "You set this day yourself, so you can still adjust it freely.")
+        return String(localized: "Changes to assigned days need \(store.otherName)'s approval.")
     }
 
+    /// Tapping a parent either records the day directly (when allowed) or
+    /// opens the proposal flow for the other parent's approval.
     private func assignButton(for role: ParentRole, family: Family) -> some View {
         let isCurrent = owner == role
+        let isDirect = store.canEditDirectly(dayKey, settingTo: role)
         return Button {
-            act {
-                await store.setDayDirectly(dayKey, to: role)
-                saveNoteAndDismiss()
+            if isDirect {
+                act {
+                    await store.setDayDirectly(dayKey, to: role)
+                    saveNoteAndDismiss()
+                }
+            } else {
+                withAnimation { proposeTarget = role }
             }
         } label: {
             VStack(spacing: 6) {
@@ -227,9 +245,14 @@ struct DayDetailSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+                if !isCurrent && !isDirect {
+                    Label("Needs approval", systemImage: "person.2")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                     .fill(Color(hex: family.colorHex(of: role)).opacity(0.15))
@@ -242,37 +265,15 @@ struct DayDetailSheet: View {
             )
         }
         .disabled(isWorking || isCurrent)
+        .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
     }
 
-    // MARK: - Assigned by the other side: propose a change
-
-    private var actionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let owner, let family = store.family {
-                Button {
-                    withAnimation { isProposing = true }
-                } label: {
-                    Label(
-                        owner == store.myRole
-                            ? String(localized: "Give this day to \(family.name(of: owner.other))")
-                            : String(localized: "Ask to have this day"),
-                        systemImage: "arrow.left.arrow.right"
-                    )
-                }
-                .buttonStyle(SecondaryButtonStyle())
-
-                Text("Changes to assigned days need \(store.otherName)'s approval.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
+    // MARK: - Proposal flow
 
     private var proposeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let owner, let family = store.family {
-                let newOwner = owner.other
-                Text("Propose: this day goes to \(family.name(of: newOwner))")
+            if let target = proposeTarget, let family = store.family {
+                Text("Propose: this day goes to \(family.name(of: target))")
                     .font(.subheadline.weight(.semibold))
 
                 TextField("Add a message (optional)", text: $proposalMessage, axis: .vertical)
@@ -284,7 +285,7 @@ struct DayDetailSheet: View {
                     Task {
                         isWorking = true
                         let sent = await store.submitRequest(
-                            changes: [DayChange(dateKey: dayKey, newOwner: newOwner, oldOwner: owner)],
+                            changes: [DayChange(dateKey: dayKey, newOwner: target, oldOwner: owner)],
                             message: proposalMessage
                         )
                         isWorking = false
@@ -301,7 +302,7 @@ struct DayDetailSheet: View {
                 .disabled(isWorking)
 
                 Button {
-                    withAnimation { isProposing = false }
+                    withAnimation { proposeTarget = nil }
                 } label: {
                     Text("Cancel")
                         .font(.subheadline)

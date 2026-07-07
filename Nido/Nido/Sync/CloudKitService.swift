@@ -59,11 +59,21 @@ final class CloudKitService {
         let share = CKShare(recordZoneID: zone.zoneID)
         share.publicPermission = .readWrite
         share[CKShare.SystemFieldKey.title] = title
-        let saved = try await save(records: [share], in: container.privateCloudDatabase)
-        guard let savedShare = saved.compactMap({ $0 as? CKShare }).first,
-              let url = savedShare.url
-        else { throw NidoError.shareURLMissing }
-        return url
+        do {
+            let saved = try await save(records: [share], in: container.privateCloudDatabase)
+            guard let savedShare = saved.compactMap({ $0 as? CKShare }).first,
+                  let url = savedShare.url
+            else { throw NidoError.shareURLMissing }
+            return url
+        } catch {
+            // The save can fail because a share already exists but the
+            // earlier lookup hit a transient error — try the lookup again
+            // before surfacing a cryptic CloudKit message.
+            if let existing = try? await fetchShare(), let url = existing.url {
+                return url
+            }
+            throw error
+        }
     }
 
     /// Re-fetches the zone share to recover the invitation URL and participant list.

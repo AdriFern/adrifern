@@ -13,7 +13,9 @@ struct CalendarView: View {
     @State private var showInvite = false
 
     private static let offsetRange = Array(-24...36)
-    private let baseMonth = Month.containing(Date())
+    // Computed so the anchor stays correct if the app lives across a
+    // month boundary.
+    private var baseMonth: Month { Month.containing(Date()) }
 
     private var visibleMonth: Month { baseMonth.adding(monthOffset) }
 
@@ -99,7 +101,9 @@ struct CalendarView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if store.family?.partnerHasJoined == false {
+                // Shown once the coaching card has retired, so the bottom of
+                // the screen never stacks two cards on small phones.
+                if store.family?.partnerHasJoined == false, !store.assignments.isEmpty {
                     inviteBanner
                         .padding(.horizontal, 16)
                         .padding(.bottom, 4)
@@ -193,9 +197,12 @@ struct CalendarView: View {
                     }
                 }
             }
-            if !store.pendingDateKeys.isEmpty || !store.notes.isEmpty {
+            let monthKeys = visibleMonth.dayKeys
+            let pendingInMonth = monthKeys.contains { store.pendingDateKeys.contains($0) }
+            let notesInMonth = monthKeys.contains { store.notes[$0] != nil }
+            if pendingInMonth || notesInMonth {
                 HStack(spacing: 14) {
-                    if !store.pendingDateKeys.isEmpty {
+                    if pendingInMonth {
                         HStack(spacing: 4) {
                             Image(systemName: "clock.fill")
                                 .font(.system(size: 9))
@@ -205,7 +212,7 @@ struct CalendarView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    if !store.notes.isEmpty {
+                    if notesInMonth {
                         HStack(spacing: 4) {
                             Circle()
                                 .fill(.secondary)
@@ -366,10 +373,19 @@ struct DayCell: View {
     }
 
     private var accessibilityText: String {
+        var text: String
         if let owner, let family {
-            return String(localized: "Day \(dayNumber), \(family.name(of: owner))")
+            text = String(localized: "Day \(dayNumber), \(family.name(of: owner))")
+        } else {
+            text = String(localized: "Day \(dayNumber), unassigned")
         }
-        return String(localized: "Day \(dayNumber), unassigned")
+        if isPending {
+            text += ", " + String(localized: "awaiting approval")
+        }
+        if hasNote {
+            text += ", " + String(localized: "has a note")
+        }
+        return text
     }
 
     var body: some View {

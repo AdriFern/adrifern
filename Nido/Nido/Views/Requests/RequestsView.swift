@@ -166,30 +166,29 @@ struct RequestRow: View {
     private var changesList: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(visibleChanges, id: \.self) { change in
-                HStack(spacing: 8) {
-                    if let family = store.family {
-                        Text(Day.shortLabel(for: change.dateKey))
-                            .font(.subheadline)
-                        Group {
-                            if let oldOwner = change.oldOwner {
-                                HStack(spacing: 4) {
-                                    ParentDot(colorHex: family.colorHex(of: oldOwner), size: 8)
-                                    Text(family.name(of: oldOwner))
-                                }
-                            } else {
-                                Text("Unassigned")
+                if let family = store.family {
+                    // Long names (especially in Spanish) fall back to two lines.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            Text(Day.shortLabel(for: change.dateKey))
+                                .font(.subheadline)
+                            oldOwnerLabel(change: change, family: family)
+                            Image(systemName: "arrow.right")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            newOwnerLabel(change: change, family: family)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Day.shortLabel(for: change.dateKey))
+                                .font(.subheadline)
+                            HStack(spacing: 8) {
+                                oldOwnerLabel(change: change, family: family)
+                                Image(systemName: "arrow.right")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                newOwnerLabel(change: change, family: family)
                             }
                         }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        HStack(spacing: 4) {
-                            ParentDot(colorHex: family.colorHex(of: change.newOwner), size: 8)
-                            Text(family.name(of: change.newOwner))
-                        }
-                        .font(.subheadline)
                     }
                 }
             }
@@ -204,6 +203,29 @@ struct RequestRow: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func oldOwnerLabel(change: DayChange, family: Family) -> some View {
+        Group {
+            if let oldOwner = change.oldOwner {
+                HStack(spacing: 4) {
+                    ParentDot(colorHex: family.colorHex(of: oldOwner), size: 8)
+                    Text(family.name(of: oldOwner))
+                }
+            } else {
+                Text("Unassigned")
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+    }
+
+    private func newOwnerLabel(change: DayChange, family: Family) -> some View {
+        HStack(spacing: 4) {
+            ParentDot(colorHex: family.colorHex(of: change.newOwner), size: 8)
+            Text(family.name(of: change.newOwner))
+        }
+        .font(.subheadline)
     }
 
     private var statusChip: some View {
