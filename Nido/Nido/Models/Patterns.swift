@@ -71,8 +71,20 @@ enum PatternGenerator {
 
             case .everyOtherWeekend:
                 let isWeekend = weekday == 6 || weekday == 7 || weekday == 1 // Fri, Sat, Sun
-                let weekIndex = dayIndex / 7
-                owner = (isWeekend && weekIndex % 2 == 1) ? firstParent.other : firstParent
+                if !isWeekend {
+                    owner = firstParent
+                } else {
+                    // Alternate whole weekends (Fri–Sun stay together) by
+                    // anchoring each weekend to its Friday, so a mid-weekend
+                    // start date can never split a weekend between parents.
+                    let offsetToFriday = weekday == 6 ? 0 : (weekday == 7 ? 1 : 2)
+                    let friday = calendar.date(byAdding: .day, value: -offsetToFriday, to: date) ?? date
+                    let startWeekday = calendar.component(.weekday, from: startDay)
+                    let daysSinceFriday = (startWeekday - 6 + 7) % 7
+                    let anchorFriday = calendar.date(byAdding: .day, value: -daysSinceFriday, to: startDay) ?? startDay
+                    let weekendIndex = (calendar.dateComponents([.day], from: anchorFriday, to: friday).day ?? 0) / 7
+                    owner = weekendIndex % 2 == 1 ? firstParent.other : firstParent
+                }
 
             case .weekly:
                 owner = weekdaysForFirst.contains(weekday) ? firstParent : firstParent.other

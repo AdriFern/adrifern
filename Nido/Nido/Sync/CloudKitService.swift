@@ -45,9 +45,16 @@ final class CloudKitService {
     // MARK: - Zone + share (owner side)
 
     /// Creates the custom zone and a zone-wide share, returning the invitation URL.
+    /// Safe to call again after a reinstall: an existing share is reused.
     func createZoneAndShare(title: String) async throws -> URL {
         let zone = CKRecordZone(zoneName: Self.zoneName)
         _ = try await container.privateCloudDatabase.save(zone)
+
+        // A zone can only carry one zone-wide share; reuse it if it exists
+        // (e.g. the app was deleted and reinstalled).
+        if let existing = try? await fetchShare(), let url = existing.url {
+            return url
+        }
 
         let share = CKShare(recordZoneID: zone.zoneID)
         share.publicPermission = .readWrite
@@ -138,13 +145,23 @@ final class CloudKitService {
                 operation.recordWithIDWasDeletedBlock = { recordID, recordType in
                     partial.deletedRecordIDs.append((recordID, recordType))
                 }
+                var zoneError: Error?
                 operation.recordZoneFetchResultBlock = { _, result in
-                    if case .success(let (serverToken, _, more)) = result {
+                    switch result {
+                    case .success(let (serverToken, _, more)):
                         partial.changeToken = serverToken
                         partial.moreComing = more
+                    case .failure(let error):
+                        // Zone-level errors (expired token, deleted zone,
+                        // revoked access) arrive here, not at operation level.
+                        zoneError = error
                     }
                 }
                 operation.fetchRecordZoneChangesResultBlock = { result in
+                    if let zoneError {
+                        continuation.resume(throwing: zoneError)
+                        return
+                    }
                     switch result {
                     case .success:
                         continuation.resume(returning: partial)
@@ -209,8 +226,13 @@ final class CloudKitService {
     // MARK: - Subscriptions (push)
 
     func saveSubscriptions() async throws {
+        // A visible (localized, generic) alert makes delivery reliable even
+        // when the app is force-quit; content-available additionally wakes
+        // the app to refresh and post specific local notifications.
         let notificationInfo = CKSubscription.NotificationInfo()
         notificationInfo.shouldSendContentAvailable = true
+        notificationInfo.alertLocalizationKey = "PUSH_CALENDAR_UPDATED"
+        notificationInfo.soundName = "default"
 
         if isOwner {
             let subscription = CKRecordZoneSubscription(zoneID: zoneID, subscriptionID: "nido-zone-changes")
@@ -236,8 +258,6 @@ final class CloudKitService {
 enum NidoError: LocalizedError {
     case shareURLMissing
     case invalidInvitation
-    case noICloudAccount
-    case zoneGone
 
     var errorDescription: String? {
         switch self {
@@ -245,10 +265,6 @@ enum NidoError: LocalizedError {
             String(localized: "The invitation link could not be created. Please try again.")
         case .invalidInvitation:
             String(localized: "That doesn't look like a valid Nido invitation.")
-        case .noICloudAccount:
-            String(localized: "Please sign in to iCloud in Settings to use Nido.")
-        case .zoneGone:
-            String(localized: "This shared calendar is no longer available.")
         }
     }
 }

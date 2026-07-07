@@ -40,9 +40,15 @@ struct CalendarView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
-                legend
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
+                Group {
+                    if store.assignments.isEmpty {
+                        coachingCard
+                    } else {
+                        legend
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
             }
             .background(Theme.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -59,15 +65,21 @@ struct CalendarView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 14) {
-                        if store.isSyncing {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
+                    HStack(spacing: 10) {
+                        // Fixed-width slot so the button doesn't shift when
+                        // the sync spinner appears.
+                        ProgressView()
+                            .controlSize(.small)
+                            .opacity(store.isSyncing ? 1 : 0)
+                            .frame(width: 20)
                         Button {
                             showPattern = true
                         } label: {
-                            Image(systemName: "wand.and.stars")
+                            HStack(spacing: 4) {
+                                Image(systemName: "wand.and.stars")
+                                Text("Schedule")
+                                    .font(.subheadline.weight(.semibold))
+                            }
                         }
                         .accessibilityLabel(Text("Set up a repeating schedule"))
                     }
@@ -85,9 +97,6 @@ struct CalendarView: View {
                 NavigationStack {
                     InviteView(isOnboarding: false)
                 }
-            }
-            .refreshable {
-                await store.refresh()
             }
             .safeAreaInset(edge: .bottom) {
                 if store.family?.partnerHasJoined == false {
@@ -120,15 +129,17 @@ struct CalendarView: View {
                 Text(visibleMonth.title)
                     .font(.title3.bold())
                     .contentTransition(.numericText())
-                if monthOffset != 0 {
-                    Button {
-                        withAnimation { monthOffset = 0 }
-                    } label: {
-                        Text("Back to today")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
-                    }
+                // Always laid out so the header height never jumps mid-swipe.
+                Button {
+                    withAnimation { monthOffset = 0 }
+                } label: {
+                    Text("Back to today")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
                 }
+                .opacity(monthOffset == 0 ? 0 : 1)
+                .disabled(monthOffset == 0)
+                .accessibilityHidden(monthOffset == 0)
             }
 
             Spacer()
@@ -160,27 +171,78 @@ struct CalendarView: View {
     // MARK: - Legend
 
     private var legend: some View {
-        HStack(spacing: 10) {
-            if let family = store.family {
-                let counts = monthCounts
-                LegendChip(
-                    name: family.name(of: .parentA),
-                    colorHex: family.colorA,
-                    count: counts.a
-                )
-                LegendChip(
-                    name: family.name(of: .parentB),
-                    colorHex: family.colorB,
-                    count: counts.b
-                )
-                Spacer()
-                if counts.unassigned > 0 {
-                    Text("\(counts.unassigned) unassigned")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        VStack(spacing: 6) {
+            HStack(spacing: 10) {
+                if let family = store.family {
+                    let counts = monthCounts
+                    LegendChip(
+                        name: family.name(of: .parentA),
+                        colorHex: family.colorA,
+                        count: counts.a
+                    )
+                    LegendChip(
+                        name: family.name(of: .parentB),
+                        colorHex: family.colorB,
+                        count: counts.b
+                    )
+                    Spacer()
+                    if counts.unassigned > 0 {
+                        Text("\(counts.unassigned) unassigned")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if !store.pendingDateKeys.isEmpty || !store.notes.isEmpty {
+                HStack(spacing: 14) {
+                    if !store.pendingDateKeys.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.orange)
+                            Text("awaiting approval")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if !store.notes.isEmpty {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(.secondary)
+                                .frame(width: 4, height: 4)
+                            Text("note")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
                 }
             }
         }
+    }
+
+    private var coachingCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let family = store.family {
+                Label {
+                    Text("Tap any day to choose who has \(family.childName) — or fill in weeks at once with a repeating schedule.")
+                        .font(.subheadline)
+                } icon: {
+                    Image(systemName: "hand.tap")
+                        .foregroundStyle(Color.accentColor)
+                }
+                Button {
+                    showPattern = true
+                } label: {
+                    Text("Set up a repeating schedule")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
 
     private var monthCounts: (a: Int, b: Int, unassigned: Int) {
@@ -277,7 +339,10 @@ struct MonthGridView: View {
                 }
             }
         }
-        .scrollDisabled(true)
+        .scrollBounceBehavior(.always)
+        .refreshable {
+            await store.refresh()
+        }
     }
 }
 
@@ -324,7 +389,7 @@ struct DayCell: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .frame(minHeight: 48)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(fillColor)

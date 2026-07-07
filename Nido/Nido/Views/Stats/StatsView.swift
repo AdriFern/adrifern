@@ -5,6 +5,11 @@ struct StatsView: View {
     @Environment(FamilyStore.self) private var store
     @State private var year = Calendar.current.component(.year, from: Date())
 
+    private var yearRange: ClosedRange<Int> {
+        let current = Calendar.current.component(.year, from: Date())
+        return (current - 3)...(current + 3)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -35,6 +40,8 @@ struct StatsView: View {
                     .frame(width: 36, height: 36)
                     .background(Theme.cardBackground, in: Circle())
             }
+            .disabled(year <= yearRange.lowerBound)
+            .accessibilityLabel(Text("Previous year"))
             Spacer()
             Text(String(year))
                 .font(.title3.bold())
@@ -48,6 +55,8 @@ struct StatsView: View {
                     .frame(width: 36, height: 36)
                     .background(Theme.cardBackground, in: Circle())
             }
+            .disabled(year >= yearRange.upperBound)
+            .accessibilityLabel(Text("Next year"))
         }
     }
 
@@ -137,9 +146,9 @@ struct StatsView: View {
                 let prefix = String(format: "%04d-%02d", year, monthNumber)
                 let totals = counts(forPrefix: prefix)
                 HStack(spacing: 12) {
-                    Text(Day.calendar.standaloneMonthSymbols[monthNumber - 1].capitalized)
+                    Text(Day.calendar.shortStandaloneMonthSymbols[monthNumber - 1].capitalized)
                         .font(.subheadline)
-                        .frame(width: 92, alignment: .leading)
+                        .frame(minWidth: 44, alignment: .leading)
                         .lineLimit(1)
                     SplitBar(
                         a: totals.a,

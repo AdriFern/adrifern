@@ -62,13 +62,6 @@ struct InviteView: View {
         .background(Theme.background)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if isOnboarding {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Later") { store.enterApp() }
-                }
-            }
-        }
     }
 }
 

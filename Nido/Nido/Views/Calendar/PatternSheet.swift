@@ -11,7 +11,12 @@ struct PatternSheet: View {
     @State private var firstParent: ParentRole = .parentA
     @State private var weekdaysForFirst: Set<Int> = [2, 3, 4, 5, 6]
     @State private var isApplying = false
-    @State private var outcome: FamilyStore.PatternOutcome?
+    @State private var outcomeSummary: OutcomeSummary?
+
+    /// Keep the range inside what the calendar can display.
+    private var latestAllowedDate: Date {
+        Day.calendar.date(byAdding: .month, value: 36, to: Date()) ?? Date()
+    }
 
     private var proposal: [String: ParentRole] {
         guard startDate <= endDate else { return [:] }
@@ -34,8 +39,8 @@ struct PatternSheet: View {
                         Text("Dates")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        DatePicker("From", selection: $startDate, displayedComponents: .date)
-                        DatePicker("Until", selection: $endDate, in: startDate..., displayedComponents: .date)
+                        DatePicker("From", selection: $startDate, in: ...latestAllowedDate, displayedComponents: .date)
+                        DatePicker("Until", selection: $endDate, in: startDate...latestAllowedDate, displayedComponents: .date)
                     }
                     .padding(16)
                     .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
@@ -72,9 +77,10 @@ struct PatternSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .alert(item: outcomeBinding) { summary in
+            .onAppear { firstParent = store.myRole }
+            .alert(item: $outcomeSummary) { summary in
                 Alert(
-                    title: Text("Schedule applied"),
+                    title: Text(summary.title),
                     message: Text(summary.text),
                     dismissButton: .default(Text("OK")) { dismiss() }
                 )
@@ -232,7 +238,7 @@ struct PatternSheet: View {
 
     private var footerNote: some View {
         Label {
-            Text("Unassigned days are filled in right away. Days that already belong to a parent will be sent to \(store.otherName) for approval.")
+            Text("If any day would change hands, the whole schedule is sent to \(store.otherName) as one proposal — nothing is applied until they approve it. Otherwise it's filled in right away.")
         } icon: {
             Image(systemName: "info.circle")
         }
@@ -242,34 +248,33 @@ struct PatternSheet: View {
 
     private struct OutcomeSummary: Identifiable {
         let id = UUID()
+        let title: String
         let text: String
-    }
-
-    private var outcomeBinding: Binding<OutcomeSummary?> {
-        Binding(
-            get: {
-                guard let outcome else { return nil }
-                var parts: [String] = []
-                if outcome.assignedDirectly > 0 {
-                    parts.append(String(localized: "\(outcome.assignedDirectly) days were filled in."))
-                }
-                if outcome.sentForApproval > 0 {
-                    parts.append(String(localized: "\(outcome.sentForApproval) days were sent to \(store.otherName) for approval."))
-                }
-                if parts.isEmpty {
-                    parts.append(String(localized: "Everything already matched this schedule — nothing to change."))
-                }
-                return OutcomeSummary(text: parts.joined(separator: " "))
-            },
-            set: { if $0 == nil { outcome = nil } }
-        )
     }
 
     private func applyPattern() {
         Task {
             isApplying = true
-            outcome = await store.applyPattern(proposal)
+            let outcome = await store.applyPattern(proposal)
             isApplying = false
+            guard let outcome else { return }
+
+            var parts: [String] = []
+            let title: String
+            if outcome.sentForApproval > 0 {
+                title = String(localized: "Proposal sent")
+                parts.append(String(localized: "The schedule was sent to \(store.otherName) as one proposal covering \(outcome.sentForApproval) days. It will apply once they approve it."))
+            } else if outcome.appliedDirectly > 0 {
+                title = String(localized: "Schedule applied")
+                parts.append(String(localized: "\(outcome.appliedDirectly) days were filled in."))
+            } else {
+                title = String(localized: "Nothing to change")
+                parts.append(String(localized: "Everything already matched this schedule — nothing to change."))
+            }
+            if outcome.skippedPending > 0 {
+                parts.append(String(localized: "\(outcome.skippedPending) days were skipped because they're part of a pending request."))
+            }
+            outcomeSummary = OutcomeSummary(title: title, text: parts.joined(separator: " "))
         }
     }
 }

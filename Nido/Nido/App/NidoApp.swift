@@ -15,6 +15,12 @@ struct NidoApp: App {
                 .task {
                     AppDelegate.store = store
                     await store.bootstrap()
+                    // Deliver a share accepted during cold launch, which can
+                    // arrive before this task assigns the store.
+                    if let metadata = AppDelegate.pendingShareMetadata {
+                        AppDelegate.pendingShareMetadata = nil
+                        await store.handleIncomingShare(metadata)
+                    }
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {

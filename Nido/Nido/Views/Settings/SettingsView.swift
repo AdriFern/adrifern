@@ -29,8 +29,12 @@ struct SettingsView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle(Text("Settings"))
-            .onAppear(perform: loadFromFamily)
-            .onChange(of: store.family) { _, _ in loadFromFamily(force: true) }
+            .onAppear { loadFromFamily() }
+            .onChange(of: store.family) { _, _ in
+                // Refresh the form from a sync only when the user isn't
+                // mid-edit, so their typing is never discarded.
+                if !hasProfileChanges { loadFromFamily(force: true) }
+            }
             .sheet(isPresented: $showInvite) {
                 NavigationStack {
                     InviteView(isOnboarding: false)

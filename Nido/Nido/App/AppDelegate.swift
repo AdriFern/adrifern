@@ -6,6 +6,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     /// Set by NidoApp at launch so system callbacks can reach the store.
     @MainActor static var store: FamilyStore?
 
+    /// Share metadata that arrived before the store existed (cold launch from
+    /// tapping an invitation link); drained by NidoApp right after bootstrap.
+    @MainActor static var pendingShareMetadata: CKShare.Metadata?
+
+    @MainActor
+    static func deliverShare(_ metadata: CKShare.Metadata) async {
+        if let store {
+            await store.handleIncomingShare(metadata)
+        } else {
+            pendingShareMetadata = metadata
+        }
+    }
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -22,7 +35,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata
     ) {
         Task { @MainActor in
-            await Self.store?.handleIncomingShare(cloudKitShareMetadata)
+            await Self.deliverShare(cloudKitShareMetadata)
         }
     }
 
@@ -76,7 +89,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
     ) {
         if let metadata = connectionOptions.cloudKitShareMetadata {
             Task { @MainActor in
-                await AppDelegate.store?.handleIncomingShare(metadata)
+                await AppDelegate.deliverShare(metadata)
             }
         }
     }
@@ -86,7 +99,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
         userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata
     ) {
         Task { @MainActor in
-            await AppDelegate.store?.handleIncomingShare(cloudKitShareMetadata)
+            await AppDelegate.deliverShare(cloudKitShareMetadata)
         }
     }
 }

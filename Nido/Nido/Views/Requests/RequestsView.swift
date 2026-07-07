@@ -91,7 +91,16 @@ struct RequestRow: View {
 
             changesList
 
-            if !request.message.isEmpty {
+            if request.kind == .pattern {
+                Label {
+                    Text("Repeating schedule proposal")
+                        .font(.caption)
+                } icon: {
+                    Image(systemName: "wand.and.stars")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+            } else if !request.message.isEmpty {
                 Text("“\(request.message)”")
                     .font(.subheadline)
                     .italic()
@@ -159,15 +168,28 @@ struct RequestRow: View {
             ForEach(visibleChanges, id: \.self) { change in
                 HStack(spacing: 8) {
                     if let family = store.family {
-                        ParentDot(colorHex: family.colorHex(of: change.newOwner), size: 8)
                         Text(Day.shortLabel(for: change.dateKey))
                             .font(.subheadline)
+                        Group {
+                            if let oldOwner = change.oldOwner {
+                                HStack(spacing: 4) {
+                                    ParentDot(colorHex: family.colorHex(of: oldOwner), size: 8)
+                                    Text(family.name(of: oldOwner))
+                                }
+                            } else {
+                                Text("Unassigned")
+                            }
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                         Image(systemName: "arrow.right")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
-                        Text(family.name(of: change.newOwner))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 4) {
+                            ParentDot(colorHex: family.colorHex(of: change.newOwner), size: 8)
+                            Text(family.name(of: change.newOwner))
+                        }
+                        .font(.subheadline)
                     }
                 }
             }

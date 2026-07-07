@@ -7,16 +7,18 @@ Nido is a simple, friendly iPhone app for separated parents to coordinate custod
 - **Repeating schedules** — apply common patterns in seconds: alternating weeks, 2-2-3 rotation, every other weekend, or a custom weekly split.
 - **Notes on days** — "Dentist at 5pm", "swim bag packed" — visible to both parents.
 - **Statistics** — days with each parent per month and per year, with percentages.
-- **Push notifications** — get notified when the other parent proposes, approves, or declines a change.
-- **Private by design** — data lives in the creator's private iCloud and is shared *only* with the co-parent via CloudKit sharing. No third-party servers, no accounts, no subscription.
+- **Notifications** — a push arrives when the calendar changes, plus detailed alerts ("María proposes a change for Sat, Jul 12") generated on refresh. iOS may delay pushes for force-quit apps; opening the app always syncs.
+- **Private by design** — data lives in the creator's private iCloud and is shared via CloudKit sharing. The app enforces a single co-parent: once someone has joined, the invitation is rejected for anyone else. Still, treat the invitation link like a house key and send it only to your co-parent. No third-party servers, no accounts, no subscription.
 - **Invitations by QR code or link** — the co-parent scans a QR code or taps a link to join.
+- **Reinstall-proof** — "Restore an existing calendar" reconnects either parent after a new phone or reinstall.
 - **English + Spanish**, following the iPhone's language automatically.
 
 ## Requirements
 
 - A Mac with **Xcode 16 or newer** (free from the Mac App Store).
 - Two iPhones running **iOS 17 or newer**, each signed into its own **iCloud account**.
-- An **Apple ID** to sign the app. A free account works for personal installs (app must be re-installed every 7 days); a paid Apple Developer account ($99/year) removes that limit and enables TestFlight.
+- A **paid Apple Developer account** ($99/year). Nido uses CloudKit and push notifications, which Apple does not enable for free "Personal Team" signing. The paid account also gives you TestFlight, the easiest way to install on the co-parent's phone.
+- Both parents are assumed to live in the same time zone (days are counted in each device's local calendar).
 
 ## Getting started (first build)
 
@@ -45,8 +47,8 @@ Two options:
 1. **Parent 1** opens Nido → *Set up a new calendar* → enters their name, the child's name, and picks a color.
 2. Nido shows an **invitation QR code**. Parent 2 installs Nido, opens *I have an invitation*, and scans the code (or taps the link sent by Messages/email — or pastes it).
 3. Parent 2 enters their name and color. Both calendars are now live and in sync.
-4. Tap any **unassigned** day to record who has the child — or use the ✨ wand button to apply a repeating schedule.
-5. To change an **assigned** day, tap it and propose the change; the other parent approves or declines it from the Requests tab. Nothing changes hands without both of you agreeing.
+4. Tap any **unassigned** day to record who has the child — or use the ✨ Schedule button to apply a repeating pattern. The other parent gets a heads-up notification for days you fill in directly, and days *you* set yourself stay freely adjustable by you.
+5. To change a day the **other parent set or that was agreed through a request**, tap it and propose the change; the other parent approves or declines it (from the Requests tab or right on the day). A day never changes hands without both of you agreeing, and if a repeating schedule would move existing days, the entire schedule is sent as one all-or-nothing proposal.
 
 ## Project layout
 
@@ -65,8 +67,8 @@ Nido/
 
 ## Privacy & security
 
-- All data is stored in the **calendar creator's private iCloud database** inside a dedicated record zone shared with exactly one participant.
-- The invitation link is the only way in; treat it like a house key and send it directly to your co-parent.
+- All data is stored in the **calendar creator's private iCloud database** inside a dedicated record zone shared through CloudKit.
+- The invitation link is the only way in. The app refuses the invitation once a co-parent has joined (rejoining from the same iCloud account is always allowed), but the link itself stays technically valid on Apple's side — treat it like a house key and send it directly to your co-parent only.
 - Apple's CloudKit handles authentication (iCloud accounts), encryption in transit, and at rest.
 - The app collects **zero analytics** and talks to no servers other than iCloud.
 
@@ -77,5 +79,6 @@ Nido/
 | "iCloud needed" alert | Sign into iCloud in the iPhone Settings app and reopen Nido. |
 | Invitation link does nothing on the co-parent's phone | Make sure Nido is installed *first*, then tap the link. Or use the in-app *Scan QR code* / paste-link option. |
 | Changes don't appear on the other phone | Pull down the calendar to refresh. Push can take a moment; foreground refresh always fetches. |
-| Notifications don't arrive | Notifications require accepting the permission prompt and a build with the push entitlement (device, not simulator). |
+| Notifications don't arrive | Notifications require accepting the permission prompt and a build with the push entitlement (device, not simulator). iOS also throttles pushes to force-quit apps — reopening the app always catches up. |
+| Reinstalled the app / new phone | On the welcome screen choose **Restore an existing calendar** — it finds your calendar (owned or shared) on the same iCloud account. |
 | Building for TestFlight works but the app can't see data | Deploy the CloudKit schema to Production in the CloudKit Console (see above). |

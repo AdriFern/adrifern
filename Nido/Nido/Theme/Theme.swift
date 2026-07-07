@@ -110,7 +110,9 @@ struct ColorSwatchPicker: View {
                         }
                     }
                     .disabled(isDisabled)
-                    .accessibilityLabel(Text("Color option"))
+                    .accessibilityLabel(Text(Palette.name(for: hex)))
+                    .accessibilityAddTraits(selection == hex ? [.isSelected] : [])
+                    .accessibilityHint(isDisabled ? Text("Already used by your co-parent") : Text(""))
                 }
             }
             .padding(.vertical, 4)

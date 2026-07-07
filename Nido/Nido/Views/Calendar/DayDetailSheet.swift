@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Sheet shown when tapping a calendar day: assign it, propose a change,
-/// or attach a note.
+/// respond to a pending request, or attach a note.
 struct DayDetailSheet: View {
     @Environment(FamilyStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -33,8 +33,8 @@ struct DayDetailSheet: View {
 
                     if let pending = pendingChange {
                         pendingCard(pending)
-                    } else if owner == nil {
-                        assignSection
+                    } else if store.canEditDirectly(dayKey) {
+                        directEditSection
                     } else if isProposing {
                         proposeSection
                     } else {
@@ -63,7 +63,6 @@ struct DayDetailSheet: View {
                 noteLoaded = true
             }
         }
-        .interactiveDismissDisabled(false)
         .onDisappear {
             Task { await store.setNote(noteText, for: dayKey) }
         }
@@ -96,12 +95,13 @@ struct DayDetailSheet: View {
         }
     }
 
-    // MARK: - Pending request info
+    // MARK: - Pending request info + inline response
 
     private func pendingCard(_ pending: (request: ChangeRequest, change: DayChange)) -> some View {
+        let isMine = pending.request.requester == store.myRole
         let requesterName = store.family?.name(of: pending.request.requester) ?? ""
         let newOwnerName = store.family?.name(of: pending.change.newOwner) ?? ""
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 12) {
             Label {
                 Text("Awaiting approval")
                     .font(.subheadline.weight(.semibold))
@@ -109,18 +109,70 @@ struct DayDetailSheet: View {
                 Image(systemName: "clock.fill")
                     .foregroundStyle(.orange)
             }
-            Text("\(requesterName) proposed that this day goes to \(newOwnerName). You can respond in the Requests tab.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+
+            if isMine {
+                Text("You proposed that this day goes to \(newOwnerName). \(store.otherName) hasn't responded yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button(role: .destructive) {
+                    act {
+                        await store.cancel(pending.request)
+                        saveNoteAndDismiss()
+                    }
+                } label: {
+                    Text("Cancel request")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .disabled(isWorking)
+            } else {
+                Text("\(requesterName) proposed that this day goes to \(newOwnerName).")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if pending.request.changes.count > 1 {
+                    Text("This is part of a proposal covering \(pending.request.changes.count) days — you approve or decline them together.")
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
+                }
+                HStack(spacing: 10) {
+                    Button {
+                        act {
+                            await store.approve(pending.request)
+                            saveNoteAndDismiss()
+                        }
+                    } label: {
+                        if isWorking {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Label("Approve", systemImage: "checkmark")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+
+                    Button {
+                        act {
+                            await store.decline(pending.request)
+                            saveNoteAndDismiss()
+                        }
+                    } label: {
+                        Label("Decline", systemImage: "xmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                }
+                .disabled(isWorking)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
 
-    // MARK: - Unassigned: direct assignment
+    // MARK: - Direct editing (unassigned, self-set, or solo mode)
 
-    private var assignSection: some View {
+    private var directEditSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let family = store.family {
                 Text("Who has \(family.childName) this day?")
@@ -130,16 +182,42 @@ struct DayDetailSheet: View {
                     assignButton(for: .parentA, family: family)
                     assignButton(for: .parentB, family: family)
                 }
+                if owner != nil {
+                    Button {
+                        act {
+                            await store.setDayDirectly(dayKey, to: nil)
+                            saveNoteAndDismiss()
+                        }
+                    } label: {
+                        Text("Leave unassigned")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .disabled(isWorking)
+                }
+                Text(directEditFootnote(family: family))
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
             }
         }
     }
 
+    private func directEditFootnote(family: Family) -> String {
+        if owner == nil {
+            return String(localized: "Unassigned days can be filled in by either parent.")
+        }
+        if !family.partnerHasJoined {
+            return String(localized: "Until \(store.otherName) joins, you can adjust days freely.")
+        }
+        return String(localized: "You set this day yourself, so you can still adjust it freely.")
+    }
+
     private func assignButton(for role: ParentRole, family: Family) -> some View {
-        Button {
-            Task {
-                isWorking = true
-                await store.assignDay(dayKey, to: role)
-                isWorking = false
+        let isCurrent = owner == role
+        return Button {
+            act {
+                await store.setDayDirectly(dayKey, to: role)
                 saveNoteAndDismiss()
             }
         } label: {
@@ -153,14 +231,20 @@ struct DayDetailSheet: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                Color(hex: family.colorHex(of: role)).opacity(0.15),
-                in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                    .fill(Color(hex: family.colorHex(of: role)).opacity(0.15))
+                    .overlay {
+                        if isCurrent {
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                                .strokeBorder(Color(hex: family.colorHex(of: role)), lineWidth: 2)
+                        }
+                    }
             )
         }
-        .disabled(isWorking)
+        .disabled(isWorking || isCurrent)
     }
 
-    // MARK: - Assigned: propose a change
+    // MARK: - Assigned by the other side: propose a change
 
     private var actionSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -194,13 +278,13 @@ struct DayDetailSheet: View {
                 TextField("Add a message (optional)", text: $proposalMessage, axis: .vertical)
                     .lineLimit(2...4)
                     .padding(12)
-                    .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                    .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
 
                 Button {
                     Task {
                         isWorking = true
                         let sent = await store.submitRequest(
-                            changes: [DayChange(dateKey: dayKey, newOwner: newOwner)],
+                            changes: [DayChange(dateKey: dayKey, newOwner: newOwner, oldOwner: owner)],
                             message: proposalMessage
                         )
                         isWorking = false
@@ -244,6 +328,16 @@ struct DayDetailSheet: View {
             Text("Notes are visible to both parents.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func act(_ operation: @escaping () async -> Void) {
+        Task {
+            isWorking = true
+            await operation()
+            isWorking = false
         }
     }
 

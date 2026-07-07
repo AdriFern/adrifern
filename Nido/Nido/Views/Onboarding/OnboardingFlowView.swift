@@ -17,6 +17,9 @@ struct OnboardingFlowView: View {
 // MARK: - Welcome
 
 struct WelcomeView: View {
+    @Environment(FamilyStore.self) private var store
+    @State private var isRestoring = false
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
@@ -58,6 +61,25 @@ struct WelcomeView: View {
                     Text("I have an invitation")
                 }
                 .buttonStyle(SecondaryButtonStyle())
+
+                // Recovery path after a reinstall or new phone.
+                Button {
+                    Task {
+                        isRestoring = true
+                        _ = await store.reconnectExistingCalendar()
+                        isRestoring = false
+                    }
+                } label: {
+                    if isRestoring {
+                        ProgressView()
+                    } else {
+                        Text("Restore an existing calendar")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(isRestoring)
+                .padding(.top, 4)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -210,6 +232,16 @@ struct JoinProfileView: View {
 
                 Spacer(minLength: 12)
 
+                if store.family == nil {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Waiting for the calendar to sync…")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
                 Button {
                     Task {
                         isSaving = true
@@ -227,13 +259,18 @@ struct JoinProfileView: View {
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(!canContinue || isSaving)
-                .opacity(canContinue ? 1 : 0.5)
+                .disabled(!canContinue || isSaving || store.family == nil)
+                .opacity(canContinue && store.family != nil ? 1 : 0.5)
             }
             .padding(24)
         }
         .background(Theme.background)
         .onAppear {
+            if let taken = takenColor, colorHex == taken {
+                colorHex = Palette.options.first { $0 != taken } ?? Palette.defaultB
+            }
+        }
+        .onChange(of: store.family) { _, _ in
             if let taken = takenColor, colorHex == taken {
                 colorHex = Palette.options.first { $0 != taken } ?? Palette.defaultB
             }
