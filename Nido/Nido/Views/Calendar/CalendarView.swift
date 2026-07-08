@@ -183,8 +183,8 @@ struct CalendarView: View {
 
     private var weekdayHeader: some View {
         HStack(spacing: 4) {
-            ForEach(Array(Month.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
-                Text(symbol)
+            ForEach(Month.weekdaySymbols.indices, id: \.self) { index in
+                Text(Month.weekdaySymbols[index])
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -355,7 +355,8 @@ struct MonthGridView: View {
                         .frame(height: 1)
                         .id("blank-\(index)")
                 }
-                ForEach(Array(month.dayKeys.enumerated()), id: \.element) { index, dayKey in
+                ForEach(month.dayKeys.indices, id: \.self) { index in
+                    let dayKey = month.dayKeys[index]
                     DayCell(
                         dayNumber: index + 1,
                         owner: store.owner(of: memberID, on: dayKey),
@@ -366,6 +367,7 @@ struct MonthGridView: View {
                     ) {
                         onSelect(dayKey)
                     }
+                    .id(dayKey)
                 }
             }
         }

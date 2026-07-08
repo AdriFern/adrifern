@@ -847,7 +847,7 @@ final class FamilyStore {
     }
 
     private func sliceOfFamily(_ familyID: String) -> FamilySlice {
-        let memberIDs = Set(memberFamily.filter { $0.value == familyID }.map(\.key))
+        let memberIDs = Set(memberFamily.filter { $0.value == familyID }.keys)
         return FamilySlice(
             family: families[familyID],
             members: membersByID.filter { memberIDs.contains($0.key) },
@@ -1048,7 +1048,7 @@ final class FamilyStore {
         familyRefs.removeAll { $0.id == familyID }
         persistRefs()
         families.removeValue(forKey: familyID)
-        let gone = memberFamily.filter { $0.value == familyID }.map(\.key)
+        let gone = Array(memberFamily.filter { $0.value == familyID }.keys)
         for memberID in gone {
             membersByID.removeValue(forKey: memberID)
             memberFamily.removeValue(forKey: memberID)
@@ -1072,7 +1072,7 @@ final class FamilyStore {
 
     private func clearFamilyData(_ familyID: String) {
         families.removeValue(forKey: familyID)
-        let gone = memberFamily.filter { $0.value == familyID }.map(\.key)
+        let gone = Array(memberFamily.filter { $0.value == familyID }.keys)
         for memberID in gone {
             membersByID.removeValue(forKey: memberID)
             memberFamily.removeValue(forKey: memberID)
@@ -1543,7 +1543,7 @@ final class FamilyStore {
         // A pass only announces requests from families it actually synced —
         // a concurrent join (syncFamilies) may have appended requests whose
         // statuses weren't in this pass's previousStatuses snapshot.
-        let syncedFamilyIDs = Set(outcomes.map(\.familyID))
+        let syncedFamilyIDs = Set(outcomes.map { $0.familyID })
 
         for request in requests {
             let previous = previousStatuses[request.id]
