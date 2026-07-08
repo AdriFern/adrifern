@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// Wizard for applying a repeating custody pattern over a date range.
+/// Wizard for applying a repeating custody pattern over a date range,
+/// for ONE member's calendar.
 struct PatternSheet: View {
     @Environment(FamilyStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+
+    let member: Member
 
     @State private var template: PatternTemplate = .alternatingWeeks
     @State private var startDate = Calendar.current.startOfDay(for: Date())
@@ -33,6 +36,15 @@ struct PatternSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    HStack(spacing: 7) {
+                        Image(systemName: member.symbolName)
+                            .font(.caption)
+                            .foregroundStyle(Color.accentColor)
+                        Text("Schedule for \(member.name)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
                     templatePicker
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -113,8 +125,8 @@ struct PatternSheet: View {
     /// Days the current proposal would actually change (excluding pending ones).
     private var daysThatWouldChange: Int {
         proposal.reduce(into: 0) { count, entry in
-            if store.assignments[entry.key] != entry.value,
-               !store.pendingDateKeys.contains(entry.key) {
+            if store.owner(of: member.id, on: entry.key) != entry.value,
+               !store.isPending(member.id, entry.key) {
                 count += 1
             }
         }
@@ -292,7 +304,7 @@ struct PatternSheet: View {
     private func applyPattern() {
         Task {
             isApplying = true
-            let outcome = await store.applyPattern(proposal)
+            let outcome = await store.applyPattern(member: member.id, proposal: proposal)
             isApplying = false
             guard let outcome else { return }
 

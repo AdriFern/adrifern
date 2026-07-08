@@ -1,11 +1,12 @@
 import SwiftUI
 
 /// Sheet shown when tapping a calendar day: assign it, propose a change,
-/// respond to a pending request, or attach a note.
+/// respond to a pending request, or attach a note — for ONE member.
 struct DayDetailSheet: View {
     @Environment(FamilyStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
+    let member: Member
     let dayKey: String
 
     @State private var noteText = ""
@@ -14,10 +15,10 @@ struct DayDetailSheet: View {
     @State private var proposalMessage = ""
     @State private var isWorking = false
 
-    private var owner: ParentRole? { store.assignments[dayKey] }
+    private var owner: ParentRole? { store.owner(of: member.id, on: dayKey) }
 
     private var pendingChange: (request: ChangeRequest, change: DayChange)? {
-        for request in store.requests where request.isPending {
+        for request in store.requests where request.isPending && request.memberID == member.id {
             if let change = request.changes.first(where: { $0.dateKey == dayKey }) {
                 return (request, change)
             }
@@ -67,12 +68,12 @@ struct DayDetailSheet: View {
         }
         .onAppear {
             if !noteLoaded {
-                noteText = store.notes[dayKey] ?? ""
+                noteText = store.note(of: member.id, on: dayKey) ?? ""
                 noteLoaded = true
             }
         }
         .onDisappear {
-            Task { await store.setNote(noteText, for: dayKey) }
+            Task { await store.setNote(noteText, member: member.id, on: dayKey) }
         }
     }
 
@@ -80,13 +81,21 @@ struct DayDetailSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: member.symbolName)
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                Text(member.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
             Text(Day.longLabel(for: dayKey))
                 .font(.title3.bold())
 
             if let owner, let family = store.family {
                 HStack(spacing: 8) {
                     ParentDot(colorHex: family.colorHex(of: owner), size: 12)
-                    Text("\(family.childName) is with \(family.name(of: owner))")
+                    Text("\(member.name) is with \(family.name(of: owner))")
                         .font(.subheadline.weight(.semibold))
                 }
                 .padding(.horizontal, 12)
@@ -183,17 +192,17 @@ struct DayDetailSheet: View {
     private var whoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let family = store.family {
-                Text("Who has \(family.childName) this day?")
+                Text("Who has \(member.name) this day?")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 HStack(spacing: 12) {
                     assignButton(for: .parentA, family: family)
                     assignButton(for: .parentB, family: family)
                 }
-                if owner != nil, store.canEditDirectly(dayKey, settingTo: nil) {
+                if owner != nil, store.canEditDirectly(member.id, dayKey, settingTo: nil) {
                     Button {
                         act {
-                            await store.setDayDirectly(dayKey, to: nil)
+                            await store.setDayDirectly(member.id, dayKey, to: nil)
                             saveNoteAndDismiss()
                         }
                     } label: {
@@ -218,7 +227,7 @@ struct DayDetailSheet: View {
         if owner == nil {
             return String(localized: "Unassigned days can be filled in by either parent.")
         }
-        if store.canEditDirectly(dayKey, settingTo: nil) {
+        if store.canEditDirectly(member.id, dayKey, settingTo: nil) {
             return String(localized: "You can clear this day, but giving it to \(store.otherName) needs their approval.")
         }
         return String(localized: "Changes to assigned days need \(store.otherName)'s approval.")
@@ -228,14 +237,14 @@ struct DayDetailSheet: View {
     /// opens the proposal flow for the other parent's approval.
     private func assignButton(for role: ParentRole, family: Family) -> some View {
         let isCurrent = owner == role
-        let isDirect = store.canEditDirectly(dayKey, settingTo: role)
+        let isDirect = store.canEditDirectly(member.id, dayKey, settingTo: role)
         // Giving a day to the other parent can't be undone without their
         // approval, so keep the sheet open to make a mis-tap visible.
         let dismissAfter = role == store.myRole || family.partnerHasJoined == false
         return Button {
             if isDirect {
                 act {
-                    await store.setDayDirectly(dayKey, to: role)
+                    await store.setDayDirectly(member.id, dayKey, to: role)
                     if dismissAfter { saveNoteAndDismiss() }
                 }
             } else {
@@ -288,6 +297,7 @@ struct DayDetailSheet: View {
                     Task {
                         isWorking = true
                         let sent = await store.submitRequest(
+                            member: member.id,
                             changes: [DayChange(dateKey: dayKey, newOwner: target, oldOwner: owner)],
                             message: proposalMessage
                         )
@@ -347,7 +357,7 @@ struct DayDetailSheet: View {
 
     private func saveNoteAndDismiss() {
         let text = noteText
-        Task { await store.setNote(text, for: dayKey) }
+        Task { await store.setNote(text, member: member.id, on: dayKey) }
         dismiss()
     }
 }

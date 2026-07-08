@@ -18,10 +18,20 @@ struct CalendarView: View {
     private var baseMonth: Month { Month.containing(Date()) }
 
     private var visibleMonth: Month { baseMonth.adding(monthOffset) }
+    private var member: Member? { store.selectedMember }
+    private var memberAssignments: [String: ParentRole] {
+        guard let member else { return [:] }
+        return store.assignments[member.id] ?? [:]
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if store.members.count > 1 {
+                    MemberSwitcher()
+                        .padding(.bottom, 8)
+                }
+
                 monthHeader
                     .padding(.horizontal, 20)
                     .padding(.top, 4)
@@ -33,7 +43,7 @@ struct CalendarView: View {
 
                 TabView(selection: $monthOffset) {
                     ForEach(Self.offsetRange, id: \.self) { offset in
-                        MonthGridView(month: baseMonth.adding(offset)) { dayKey in
+                        MonthGridView(month: baseMonth.adding(offset), memberID: member?.id ?? "") { dayKey in
                             selectedDay = SelectedDay(key: dayKey)
                         }
                         .padding(.horizontal, 16)
@@ -43,7 +53,7 @@ struct CalendarView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
                 Group {
-                    if store.assignments.isEmpty {
+                    if memberAssignments.isEmpty {
                         coachingCard
                     } else {
                         legend
@@ -56,12 +66,12 @@ struct CalendarView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if let family = store.family {
+                    if let member {
                         HStack(spacing: 6) {
-                            Image(systemName: "heart.fill")
+                            Image(systemName: member.symbolName)
                                 .font(.caption)
                                 .foregroundStyle(Color.accentColor)
-                            Text(family.childName)
+                            Text(member.name)
                                 .font(.headline)
                         }
                     }
@@ -88,12 +98,16 @@ struct CalendarView: View {
                 }
             }
             .sheet(item: $selectedDay) { day in
-                DayDetailSheet(dayKey: day.key)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                if let member {
+                    DayDetailSheet(member: member, dayKey: day.key)
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                }
             }
             .sheet(isPresented: $showPattern) {
-                PatternSheet()
+                if let member {
+                    PatternSheet(member: member)
+                }
             }
             .sheet(isPresented: $showInvite) {
                 NavigationStack {
@@ -103,7 +117,7 @@ struct CalendarView: View {
             .safeAreaInset(edge: .bottom) {
                 // Shown once the coaching card has retired, so the bottom of
                 // the screen never stacks two cards on small phones.
-                if store.family?.partnerHasJoined == false, !store.assignments.isEmpty {
+                if store.family?.partnerHasJoined == false, !memberAssignments.isEmpty {
                     inviteBanner
                         .padding(.horizontal, 16)
                         .padding(.bottom, 4)
@@ -197,9 +211,10 @@ struct CalendarView: View {
                     }
                 }
             }
+            let memberID = member?.id ?? ""
             let monthKeys = visibleMonth.dayKeys
-            let pendingInMonth = monthKeys.contains { store.pendingDateKeys.contains($0) }
-            let notesInMonth = monthKeys.contains { store.notes[$0] != nil }
+            let pendingInMonth = monthKeys.contains { store.isPending(memberID, $0) }
+            let notesInMonth = monthKeys.contains { store.note(of: memberID, on: $0) != nil }
             if pendingInMonth || notesInMonth {
                 HStack(spacing: 14) {
                     if pendingInMonth {
@@ -228,11 +243,23 @@ struct CalendarView: View {
         }
     }
 
+    private var monthCounts: (a: Int, b: Int, unassigned: Int) {
+        var a = 0, b = 0, unassigned = 0
+        for key in visibleMonth.dayKeys {
+            switch memberAssignments[key] {
+            case .parentA: a += 1
+            case .parentB: b += 1
+            case nil: unassigned += 1
+            }
+        }
+        return (a, b, unassigned)
+    }
+
     private var coachingCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let family = store.family {
+            if let member {
                 Label {
-                    Text("Tap any day to choose who has \(family.childName) — or fill in weeks at once with a repeating schedule.")
+                    Text("Tap any day to choose who has \(member.name) — or fill in weeks at once with a repeating schedule.")
                         .font(.subheadline)
                 } icon: {
                     Image(systemName: "hand.tap")
@@ -250,18 +277,6 @@ struct CalendarView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-    }
-
-    private var monthCounts: (a: Int, b: Int, unassigned: Int) {
-        var a = 0, b = 0, unassigned = 0
-        for key in visibleMonth.dayKeys {
-            switch store.assignments[key] {
-            case .parentA: a += 1
-            case .parentB: b += 1
-            case nil: unassigned += 1
-            }
-        }
-        return (a, b, unassigned)
     }
 
     private var inviteBanner: some View {
@@ -320,6 +335,7 @@ private struct LegendChip: View {
 struct MonthGridView: View {
     @Environment(FamilyStore.self) private var store
     let month: Month
+    let memberID: String
     var onSelect: (String) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
@@ -335,11 +351,11 @@ struct MonthGridView: View {
                 ForEach(Array(month.dayKeys.enumerated()), id: \.element) { index, dayKey in
                     DayCell(
                         dayNumber: index + 1,
-                        owner: store.assignments[dayKey],
+                        owner: store.owner(of: memberID, on: dayKey),
                         family: store.family,
                         isToday: dayKey == Day.todayKey,
-                        hasNote: store.notes[dayKey] != nil,
-                        isPending: store.pendingDateKeys.contains(dayKey)
+                        hasNote: store.note(of: memberID, on: dayKey) != nil,
+                        isPending: store.isPending(memberID, dayKey)
                     ) {
                         onSelect(dayKey)
                     }

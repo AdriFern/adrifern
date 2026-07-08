@@ -5,6 +5,7 @@ import Foundation
 
 enum RecordType {
     static let family = "Family"
+    static let member = "Member"
     static let dayAssignment = "DayAssignment"
     static let changeRequest = "ChangeRequest"
     static let dayNote = "DayNote"
@@ -24,7 +25,6 @@ enum ParentRole: String, Codable, CaseIterable, Identifiable, Sendable {
 // MARK: - Family
 
 struct Family: Codable, Equatable, Sendable {
-    var childName: String
     var nameA: String
     var nameB: String
     var colorA: String
@@ -51,15 +51,13 @@ struct Family: Codable, Equatable, Sendable {
 
     init?(record: CKRecord) {
         guard record.recordType == RecordType.family else { return nil }
-        childName = record["childName"] as? String ?? ""
         nameA = record["nameA"] as? String ?? ""
         nameB = record["nameB"] as? String ?? ""
         colorA = record["colorA"] as? String ?? Palette.defaultA
         colorB = record["colorB"] as? String ?? Palette.defaultB
     }
 
-    init(childName: String, nameA: String, nameB: String = "", colorA: String, colorB: String = Palette.defaultB) {
-        self.childName = childName
+    init(nameA: String, nameB: String = "", colorA: String, colorB: String = Palette.defaultB) {
         self.nameA = nameA
         self.nameB = nameB
         self.colorA = colorA
@@ -67,7 +65,6 @@ struct Family: Codable, Equatable, Sendable {
     }
 
     func apply(to record: CKRecord) {
-        record["childName"] = childName
         record["nameA"] = nameA
         record["nameB"] = nameB
         record["colorA"] = colorA
@@ -75,19 +72,81 @@ struct Family: Codable, Equatable, Sendable {
     }
 }
 
+// MARK: - Member (a child or pet whose custody is tracked)
+
+/// Each member has their own independent custody calendar: kids and pets
+/// can follow different schedules.
+struct Member: Identifiable, Codable, Equatable, Sendable {
+    enum Kind: String, Codable, CaseIterable, Sendable {
+        case child, pet
+    }
+
+    var id: String
+    var name: String
+    var kind: Kind
+    var sortOrder: Int
+
+    static let maxCount = 8
+
+    var symbolName: String { kind == .child ? "heart.fill" : "pawprint.fill" }
+
+    init(name: String, kind: Kind, sortOrder: Int) {
+        self.id = "member-" + UUID().uuidString
+        self.name = name
+        self.kind = kind
+        self.sortOrder = sortOrder
+    }
+
+    init?(record: CKRecord) {
+        guard record.recordType == RecordType.member,
+              let name = record["name"] as? String,
+              let rawKind = record["kind"] as? String,
+              let kind = Kind(rawValue: rawKind)
+        else { return nil }
+        self.id = record.recordID.recordName
+        self.name = name
+        self.kind = kind
+        self.sortOrder = record["sortOrder"] as? Int ?? 0
+    }
+
+    func apply(to record: CKRecord) {
+        record["name"] = name
+        record["kind"] = kind.rawValue
+        record["sortOrder"] = sortOrder
+    }
+}
+
 // MARK: - Day assignment
 
-/// Which parent has the child on a given day. Unassigned days simply have no record.
-/// `assignedBy` records who set the day directly; days settled through an approved
-/// change request have no `assignedBy` and are "locked" (only changeable by request).
+/// Which parent has a given member on a given day. Unassigned days simply
+/// have no record. `assignedBy` records who set the day directly; days
+/// settled through an approved change request have no `assignedBy` and are
+/// "locked" (only changeable by request).
 struct DayAssignment: Codable, Equatable, Sendable {
+    var memberID: String
     var dateKey: String
     var owner: ParentRole
     var assignedBy: ParentRole?
 
-    static func recordName(for dateKey: String) -> String { "day-\(dateKey)" }
+    static func recordName(member memberID: String, dateKey: String) -> String {
+        "day-\(memberID)-\(dateKey)"
+    }
 
-    init(dateKey: String, owner: ParentRole, assignedBy: ParentRole?) {
+    /// Recovers (memberID, dateKey) from a record name like
+    /// "day-member-<uuid>-2026-07-08". The date key is always the last
+    /// 10 characters.
+    static func parseRecordName(_ name: String, prefix: String) -> (memberID: String, dateKey: String)? {
+        guard name.hasPrefix(prefix) else { return nil }
+        let body = name.dropFirst(prefix.count)
+        guard body.count > 11 else { return nil }
+        let dateKey = String(body.suffix(10))
+        let memberID = String(body.dropLast(11))
+        guard !memberID.isEmpty else { return nil }
+        return (memberID, dateKey)
+    }
+
+    init(memberID: String, dateKey: String, owner: ParentRole, assignedBy: ParentRole?) {
+        self.memberID = memberID
         self.dateKey = dateKey
         self.owner = owner
         self.assignedBy = assignedBy
@@ -96,15 +155,18 @@ struct DayAssignment: Codable, Equatable, Sendable {
     init?(record: CKRecord) {
         guard record.recordType == RecordType.dayAssignment,
               let key = record["dateKey"] as? String,
+              let member = record["memberID"] as? String,
               let rawOwner = record["owner"] as? String,
               let owner = ParentRole(rawValue: rawOwner)
         else { return nil }
+        self.memberID = member
         self.dateKey = key
         self.owner = owner
         self.assignedBy = (record["assignedBy"] as? String).flatMap(ParentRole.init(rawValue:))
     }
 
     func apply(to record: CKRecord) {
+        record["memberID"] = memberID
         record["dateKey"] = dateKey
         record["owner"] = owner.rawValue
         record["assignedBy"] = assignedBy?.rawValue ?? ""
@@ -138,7 +200,8 @@ struct DayChange: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-/// A proposal to change one or more assigned days, requiring the other parent's approval.
+/// A proposal to change one or more assigned days for ONE member,
+/// requiring the other parent's approval.
 struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
     enum Status: String, Codable, Sendable {
         case pending, approved, declined, cancelled
@@ -149,6 +212,7 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
     }
 
     var id: String
+    var memberID: String
     var requester: ParentRole
     var changes: [DayChange]
     var message: String
@@ -159,8 +223,9 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
 
     var isPending: Bool { status == .pending }
 
-    init(requester: ParentRole, changes: [DayChange], message: String, kind: Kind = .manual) {
+    init(memberID: String, requester: ParentRole, changes: [DayChange], message: String, kind: Kind = .manual) {
         self.id = UUID().uuidString
+        self.memberID = memberID
         self.requester = requester
         self.changes = changes.sorted { $0.dateKey < $1.dateKey }
         self.message = message
@@ -172,6 +237,7 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
 
     init?(record: CKRecord) {
         guard record.recordType == RecordType.changeRequest,
+              let member = record["memberID"] as? String,
               let rawRequester = record["requester"] as? String,
               let requester = ParentRole(rawValue: rawRequester),
               let encodedChanges = record["changes"] as? [String],
@@ -179,6 +245,7 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
               let status = Status(rawValue: rawStatus)
         else { return nil }
         self.id = record.recordID.recordName
+        self.memberID = member
         self.requester = requester
         self.changes = encodedChanges.compactMap(DayChange.init(encoded:))
         self.message = record["message"] as? String ?? ""
@@ -190,6 +257,7 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
     }
 
     func apply(to record: CKRecord) {
+        record["memberID"] = memberID
         record["requester"] = requester.rawValue
         record["changes"] = changes.map(\.encoded)
         record["message"] = message
@@ -202,28 +270,35 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
 
 // MARK: - Day note
 
-/// A short shared note attached to a day (e.g. "Dentist at 5pm").
+/// A short shared note attached to one member's day (e.g. "Dentist at 5pm").
 struct DayNote: Codable, Equatable, Sendable {
+    var memberID: String
     var dateKey: String
     var text: String
 
-    static func recordName(for dateKey: String) -> String { "note-\(dateKey)" }
+    static func recordName(member memberID: String, dateKey: String) -> String {
+        "note-\(memberID)-\(dateKey)"
+    }
 
-    init(dateKey: String, text: String) {
+    init(memberID: String, dateKey: String, text: String) {
+        self.memberID = memberID
         self.dateKey = dateKey
         self.text = text
     }
 
     init?(record: CKRecord) {
         guard record.recordType == RecordType.dayNote,
+              let member = record["memberID"] as? String,
               let key = record["dateKey"] as? String,
               let text = record["text"] as? String
         else { return nil }
+        self.memberID = member
         self.dateKey = key
         self.text = text
     }
 
     func apply(to record: CKRecord) {
+        record["memberID"] = memberID
         record["dateKey"] = dateKey
         record["text"] = text
     }

@@ -77,6 +77,43 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// Horizontal chips to switch between family members (children & pets).
+struct MemberSwitcher: View {
+    @Environment(FamilyStore.self) private var store
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(store.members) { candidate in
+                    let isSelected = candidate.id == store.selectedMember?.id
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            store.selectedMemberID = candidate.id
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: candidate.symbolName)
+                                .font(.caption2)
+                            Text(candidate.name)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 8)
+                        .background(
+                            isSelected ? Color.accentColor : Theme.cardBackground,
+                            in: Capsule()
+                        )
+                        .foregroundStyle(isSelected ? .white : .primary)
+                    }
+                    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+}
+
 /// Horizontal color swatch picker.
 struct ColorSwatchPicker: View {
     @Binding var selection: String

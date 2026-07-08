@@ -67,35 +67,35 @@
         }
       }
     },
-    "%@ proposes a change for %@.": {
+    "%@ proposes a change for %@: %@.": {
       "extractionState": "manual",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ propone un cambio para el %2$@."
+            "value": "%1$@ propone un cambio para %2$@: %3$@."
           }
         }
       }
     },
-    "%@ proposes changes to %lld days.": {
+    "%@ proposes changes to %lld of %@'s days.": {
       "extractionState": "manual",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ propone cambios en %2$lld días."
+            "value": "%1$@ propone cambios en %2$lld días de %3$@."
           }
         }
       }
     },
-    "%@ updated %@ on the calendar.": {
+    "%@ updated %@'s day %@.": {
       "extractionState": "manual",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ actualizó el %2$@ en el calendario."
+            "value": "%1$@ actualizó el día %3$@ de %2$@."
           }
         }
       }
@@ -107,6 +107,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ actualizó %2$lld días en el calendario."
+          }
+        }
+      }
+    },
+    "%@ — days with each parent in %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — días con cada progenitor en %2$@"
           }
         }
       }
@@ -360,6 +371,17 @@
         }
       }
     },
+    "Add a child or pet": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir un hijo o una mascota"
+          }
+        }
+      }
+    },
     "Add a message (optional)": {
       "extractionState": "manual",
       "localizations": {
@@ -367,6 +389,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Añade un mensaje (opcional)"
+          }
+        }
+      }
+    },
+    "Add to the family": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a la familia"
           }
         }
       }
@@ -624,6 +657,17 @@
         }
       }
     },
+    "Children & pets": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hijos y mascotas"
+          }
+        }
+      }
+    },
     "Co-parent": {
       "extractionState": "manual",
       "localizations": {
@@ -833,6 +877,17 @@
         }
       }
     },
+    "Each child or pet has their own custody calendar — schedules can differ between them.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada hijo o mascota tiene su propio calendario de custodia; los repartos pueden ser distintos entre ellos."
+          }
+        }
+      }
+    },
     "Every other weekend": {
       "extractionState": "manual",
       "localizations": {
@@ -862,17 +917,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todo se guarda en tu iCloud privado y solo se comparte entre vosotros dos. Las notificaciones llegan automáticamente cuando algo cambia."
-          }
-        }
-      }
-    },
-    "Family": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Familia"
           }
         }
       }
@@ -1422,6 +1466,17 @@
         }
       }
     },
+    "Pet": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mascota"
+          }
+        }
+      }
+    },
     "Pick which weekdays belong to each parent": {
       "extractionState": "manual",
       "localizations": {
@@ -1510,6 +1565,17 @@
         }
       }
     },
+    "Remove %@ from Nido?": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar a %@ de Nido?"
+          }
+        }
+      }
+    },
     "Remove %@ from the calendar?": {
       "extractionState": "manual",
       "localizations": {
@@ -1517,6 +1583,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Quitar a %@ del calendario?"
+          }
+        }
+      }
+    },
+    "Remove and delete their days": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar y eliminar sus días"
           }
         }
       }
@@ -1704,6 +1781,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plan aplicado"
+          }
+        }
+      }
+    },
+    "Schedule for %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan para %@"
           }
         }
       }
@@ -2035,6 +2123,17 @@
         }
       }
     },
+    "They get their own custody calendar with the same colors and approval rules.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tendrá su propio calendario de custodia con los mismos colores y reglas de aprobación."
+          }
+        }
+      }
+    },
     "They lose access immediately and the old invitation link stops working. The calendar and its history stay, and you can adjust all days freely until someone joins again.": {
       "extractionState": "manual",
       "localizations": {
@@ -2064,6 +2163,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puede escanear este código con la cámara de su iPhone, o envíale el enlace."
+          }
+        }
+      }
+    },
+    "This deletes their whole calendar, notes and pending requests for both parents. It can't be undone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto elimina todo su calendario, sus notas y sus solicitudes pendientes para ambos progenitores. No se puede deshacer."
           }
         }
       }
@@ -2263,6 +2373,17 @@
         }
       }
     },
+    "Who are they?": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quién es?"
+          }
+        }
+      }
+    },
     "Who has %@ this day?": {
       "extractionState": "manual",
       "localizations": {
@@ -2270,6 +2391,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Con quién está %@ este día?"
+          }
+        }
+      }
+    },
+    "Who will you plan custody for?": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Para quién planificaréis la custodia?"
+          }
+        }
+      }
+    },
+    "You": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú"
+          }
+        }
+      }
+    },
+    "You can add more children and pets later in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrás añadir más hijos y mascotas después, en Ajustes."
           }
         }
       }
@@ -2369,17 +2523,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo guardar el cambio. Comprueba tu conexión a internet e inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Your child's name": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El nombre de tu peque"
           }
         }
       }

@@ -14,6 +14,11 @@ struct StatsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    if store.members.count > 1 {
+                        MemberSwitcher()
+                            .padding(.horizontal, -20)
+                    }
+
                     yearPicker
 
                     if let family = store.family {
@@ -26,6 +31,11 @@ struct StatsView: View {
             .background(Theme.background)
             .navigationTitle(Text("Stats"))
         }
+    }
+
+    private var memberAssignments: [String: ParentRole] {
+        guard let member = store.selectedMember else { return [:] }
+        return store.assignments[member.id] ?? [:]
     }
 
     // MARK: - Year picker
@@ -64,7 +74,7 @@ struct StatsView: View {
 
     private func counts(forPrefix prefix: String) -> (a: Int, b: Int) {
         var a = 0, b = 0
-        for (key, owner) in store.assignments where key.hasPrefix(prefix) {
+        for (key, owner) in memberAssignments where key.hasPrefix(prefix) {
             if owner == .parentA { a += 1 } else { b += 1 }
         }
         return (a, b)
@@ -78,9 +88,20 @@ struct StatsView: View {
         let totals = counts(forPrefix: yearPrefix)
         let total = totals.a + totals.b
         return VStack(alignment: .leading, spacing: 16) {
-            Text("Days with each parent in \(String(year))")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                if let member = store.selectedMember, store.members.count > 1 {
+                    Image(systemName: member.symbolName)
+                        .font(.caption2)
+                        .foregroundStyle(Color.accentColor)
+                    Text("\(member.name) — days with each parent in \(String(year))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Days with each parent in \(String(year))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             HStack(spacing: 16) {
                 statTile(

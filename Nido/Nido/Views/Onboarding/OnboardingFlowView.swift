@@ -94,6 +94,7 @@ struct CreateFamilyView: View {
     @Environment(FamilyStore.self) private var store
     @State private var myName = ""
     @State private var childName = ""
+    @State private var childKind: Member.Kind = .child
     @State private var colorHex = Palette.defaultA
     @State private var isCreating = false
     @State private var showInvite = false
@@ -131,7 +132,7 @@ struct CreateFamilyView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Your child's name")
+                    Text("Who will you plan custody for?")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                     TextField("e.g. Luna", text: $childName)
@@ -139,6 +140,14 @@ struct CreateFamilyView: View {
                         .submitLabel(.done)
                         .padding(14)
                         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                    Picker("Who are they?", selection: $childKind) {
+                        Label("Child", systemImage: "heart.fill").tag(Member.Kind.child)
+                        Label("Pet", systemImage: "pawprint.fill").tag(Member.Kind.pet)
+                    }
+                    .pickerStyle(.segmented)
+                    Text("You can add more children and pets later in Settings.")
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -155,7 +164,8 @@ struct CreateFamilyView: View {
                         isCreating = true
                         let success = await store.createFamily(
                             myName: myName.trimmingCharacters(in: .whitespaces),
-                            childName: childName.trimmingCharacters(in: .whitespaces),
+                            firstMemberName: childName.trimmingCharacters(in: .whitespaces),
+                            firstMemberKind: childKind,
                             colorHex: colorHex
                         )
                         isCreating = false
@@ -203,8 +213,8 @@ struct JoinProfileView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Almost there!")
                         .font(.title.bold())
-                    if let family = store.family {
-                        Text("You're joining \(family.childName)'s calendar with \(family.name(of: .parentA)).")
+                    if let family = store.family, let first = store.members.first {
+                        Text("You're joining \(first.name)'s calendar with \(family.name(of: .parentA)).")
                             .foregroundStyle(.secondary)
                     } else {
                         Text("You're joining a shared custody calendar.")

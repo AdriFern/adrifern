@@ -79,6 +79,18 @@ struct RequestRow: View {
             HStack {
                 Text(mode == .outgoing ? String(localized: "You proposed") : String(localized: "\(requesterName) proposes"))
                     .font(.subheadline.weight(.semibold))
+                if store.members.count > 1, let member = store.member(request.memberID) {
+                    HStack(spacing: 4) {
+                        Image(systemName: member.symbolName)
+                            .font(.system(size: 9))
+                        Text(member.name)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
                 Spacer()
                 if mode == .history {
                     statusChip

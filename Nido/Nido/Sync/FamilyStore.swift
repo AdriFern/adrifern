@@ -3,7 +3,8 @@ import Foundation
 import Observation
 import UserNotifications
 
-/// Central app state: holds the family, day assignments, notes and change
+/// Central app state: holds the family, its members (children & pets, each
+/// with an independent custody calendar), day assignments, notes and change
 /// requests, and coordinates every CloudKit operation.
 @MainActor
 @Observable
@@ -25,16 +26,28 @@ final class FamilyStore {
 
     private(set) var phase: Phase = .loading
     private(set) var family: Family?
-    private(set) var assignments: [String: ParentRole] = [:]
-    /// Who directly set each day (only for unlocked days; approved days are absent).
-    private(set) var directAssigner: [String: ParentRole] = [:]
-    private(set) var notes: [String: String] = [:]
+    private(set) var members: [Member] = []
+    /// memberID → dateKey → owner
+    private(set) var assignments: [String: [String: ParentRole]] = [:]
+    /// memberID → dateKey → who set it directly (absent = locked/approved)
+    private(set) var directAssigner: [String: [String: ParentRole]] = [:]
+    /// memberID → dateKey → note text
+    private(set) var notes: [String: [String: String]] = [:]
     private(set) var requests: [ChangeRequest] = []
-    private(set) var pendingDateKeys: Set<String> = []
+    /// memberID → date keys inside pending requests
+    private(set) var pendingDateKeys: [String: Set<String>] = [:]
     private(set) var myRole: ParentRole = .parentA
     private(set) var shareURL: URL?
     private(set) var isSyncing = false
     private(set) var lastSyncedAt: Date?
+
+    var selectedMemberID: String? {
+        didSet {
+            if let selectedMemberID {
+                UserDefaults.standard.set(selectedMemberID, forKey: Keys.selectedMember)
+            }
+        }
+    }
 
     /// True while a joiner has accepted an invitation but hasn't entered
     /// their name/color yet.
@@ -50,6 +63,26 @@ final class FamilyStore {
     var myName: String { family?.name(of: myRole) ?? String(localized: "Me") }
     var otherName: String { family?.name(of: otherRole) ?? String(localized: "Co-parent") }
 
+    var selectedMember: Member? {
+        members.first { $0.id == selectedMemberID } ?? members.first
+    }
+
+    func member(_ id: String) -> Member? {
+        members.first { $0.id == id }
+    }
+
+    func owner(of memberID: String, on dateKey: String) -> ParentRole? {
+        assignments[memberID]?[dateKey]
+    }
+
+    func note(of memberID: String, on dateKey: String) -> String? {
+        notes[memberID]?[dateKey]
+    }
+
+    func isPending(_ memberID: String, _ dateKey: String) -> Bool {
+        pendingDateKeys[memberID]?.contains(dateKey) ?? false
+    }
+
     var pendingIncoming: [ChangeRequest] {
         requests.filter { $0.isPending && $0.requester != myRole }
     }
@@ -60,8 +93,8 @@ final class FamilyStore {
         requests.filter { !$0.isPending }.sorted { ($0.resolvedAt ?? $0.createdAt) > ($1.resolvedAt ?? $1.createdAt) }
     }
 
-    /// Whether a day can be set to `newOwner` (nil = cleared) without the
-    /// other parent's approval. The rules, once both parents have joined:
+    /// Whether a member's day can be set to `newOwner` (nil = cleared)
+    /// without the other parent's approval. Rules once both parents joined:
     /// - a day inside a pending request is never directly editable;
     /// - an unassigned day can be recorded freely by either parent;
     /// - a day that was directly recorded for me stays mine to adjust
@@ -69,11 +102,11 @@ final class FamilyStore {
     /// - days recorded for the other parent or agreed through a request
     ///   only change via approval.
     /// While the co-parent hasn't joined, everything is freely editable.
-    func canEditDirectly(_ dateKey: String, settingTo newOwner: ParentRole?) -> Bool {
-        guard !pendingDateKeys.contains(dateKey) else { return false }
+    func canEditDirectly(_ memberID: String, _ dateKey: String, settingTo newOwner: ParentRole?) -> Bool {
+        guard !isPending(memberID, dateKey) else { return false }
         if family?.partnerHasJoined == false { return true }
-        if assignments[dateKey] == nil { return true }
-        guard directAssigner[dateKey] == myRole else { return false }
+        if owner(of: memberID, on: dateKey) == nil { return true }
+        guard directAssigner[memberID]?[dateKey] == myRole else { return false }
         return newOwner != otherRole
     }
 
@@ -92,6 +125,7 @@ final class FamilyStore {
         static let requestStatuses = "nido.requestStatuses"
         static let joinNeedsProfile = "nido.joinNeedsProfile"
         static let shareLocked = "nido.shareLocked"
+        static let selectedMember = "nido.selectedMember"
     }
 
     init() {
@@ -102,6 +136,7 @@ final class FamilyStore {
             zoneOwnerName: defaults.string(forKey: Keys.zoneOwnerName)
         )
         myRole = role
+        selectedMemberID = defaults.string(forKey: Keys.selectedMember)
     }
 
     // MARK: - Bootstrap
@@ -147,26 +182,33 @@ final class FamilyStore {
 
     // MARK: - Create family (parent A)
 
-    func createFamily(myName: String, childName: String, colorHex: String) async -> Bool {
+    func createFamily(myName: String, firstMemberName: String, firstMemberKind: Member.Kind, colorHex: String) async -> Bool {
         guard await checkAccountStatus() else { return false }
         do {
             service.configure(isOwner: true, zoneOwnerName: nil)
-            let shareTitle = String(localized: "Custody calendar for \(childName)")
+            let shareTitle = String(localized: "Custody calendar for \(firstMemberName)")
             let url = try await service.createZoneAndShare(title: shareTitle)
 
             // If a family record already exists on this account (reinstall),
             // resume it instead of overwriting the other parent's data.
             let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
-            if let existing = Family(record: record), !existing.childName.isEmpty {
+            if let existing = Family(record: record), !existing.nameA.isEmpty {
                 family = existing
             } else {
-                var newFamily = Family(childName: childName, nameA: myName, colorA: colorHex)
+                var newFamily = Family(nameA: myName, colorA: colorHex)
                 if colorHex == newFamily.colorB {
                     newFamily.colorB = Palette.options.first { $0 != colorHex } ?? Palette.defaultB
                 }
                 newFamily.apply(to: record)
-                try await service.save(records: [record])
+
+                let firstMember = Member(name: firstMemberName, kind: firstMemberKind, sortOrder: 0)
+                let memberRecord = service.newRecord(type: RecordType.member, name: firstMember.id)
+                firstMember.apply(to: memberRecord)
+
+                try await service.save(records: [record, memberRecord])
                 family = newFamily
+                members = [firstMember]
+                selectedMemberID = firstMember.id
             }
 
             shareURL = url
@@ -437,6 +479,99 @@ final class FamilyStore {
         _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
     }
 
+    // MARK: - Members (children & pets)
+
+    @discardableResult
+    func addMember(name: String, kind: Member.Kind) async -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, members.count < Member.maxCount else { return false }
+        let member = Member(name: trimmed, kind: kind, sortOrder: (members.map(\.sortOrder).max() ?? -1) + 1)
+        do {
+            let record = service.newRecord(type: RecordType.member, name: member.id)
+            member.apply(to: record)
+            try await service.save(records: [record])
+            members.append(member)
+            sortMembers()
+            if selectedMemberID == nil { selectedMemberID = member.id }
+            saveCache()
+            return true
+        } catch {
+            presentError(error)
+            return false
+        }
+    }
+
+    func renameMember(_ memberID: String, to name: String) async {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty,
+              let index = members.firstIndex(where: { $0.id == memberID }),
+              members[index].name != trimmed
+        else { return }
+        do {
+            let record = service.newRecord(type: RecordType.member, name: memberID)
+            var updated = members[index]
+            updated.name = trimmed
+            updated.apply(to: record)
+            try await service.save(records: [record])
+            members[index] = updated
+            saveCache()
+        } catch {
+            presentError(error)
+        }
+    }
+
+    /// Removes a member and every record of theirs (days, notes) plus their
+    /// pending requests. The last member can't be deleted.
+    func deleteMember(_ memberID: String) async {
+        guard members.count > 1, members.contains(where: { $0.id == memberID }) else { return }
+        do {
+            var deleteIDs: [CKRecord.ID] = [service.recordID(forName: memberID)]
+            for dateKey in (assignments[memberID] ?? [:]).keys {
+                deleteIDs.append(service.recordID(forName: DayAssignment.recordName(member: memberID, dateKey: dateKey)))
+            }
+            for dateKey in (notes[memberID] ?? [:]).keys {
+                deleteIDs.append(service.recordID(forName: DayNote.recordName(member: memberID, dateKey: dateKey)))
+            }
+            var cancelled: [ChangeRequest] = []
+            var saveRecords: [CKRecord] = []
+            for request in requests where request.isPending && request.memberID == memberID {
+                var resolved = request
+                resolved.status = .cancelled
+                resolved.resolvedAt = Date()
+                let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
+                resolved.apply(to: record)
+                saveRecords.append(record)
+                cancelled.append(resolved)
+            }
+
+            // Deletions first (chunked), then the request cancellations.
+            for chunk in deleteIDs.chunked(into: 200) {
+                try await service.save(records: [], deleting: chunk)
+            }
+            if !saveRecords.isEmpty {
+                try await service.save(records: saveRecords)
+            }
+
+            members.removeAll { $0.id == memberID }
+            assignments.removeValue(forKey: memberID)
+            directAssigner.removeValue(forKey: memberID)
+            notes.removeValue(forKey: memberID)
+            for request in cancelled {
+                upsert(request)
+                rememberRequestStatus(request)
+            }
+            rebuildPendingDateKeys()
+            if selectedMemberID == memberID { selectedMemberID = members.first?.id }
+            saveCache()
+        } catch {
+            presentError(error)
+        }
+    }
+
+    private func sortMembers() {
+        members.sort { ($0.sortOrder, $0.name) < ($1.sortOrder, $1.name) }
+    }
+
     // MARK: - Refresh
 
     @discardableResult
@@ -476,6 +611,7 @@ final class FamilyStore {
                 if code == .changeTokenExpired, !retriedAfterTokenReset {
                     retriedAfterTokenReset = true
                     changeToken = nil
+                    members = []
                     assignments = [:]
                     directAssigner = [:]
                     notes = [:]
@@ -523,7 +659,8 @@ final class FamilyStore {
         return ckError.code
     }
 
-    /// Applies fetched changes; returns date keys whose assignment changed remotely.
+    /// Applies fetched changes; returns "memberID|dateKey" keys whose
+    /// assignment changed remotely.
     private func apply(_ changes: CloudKitService.ZoneChanges) -> Set<String> {
         var changedDays: Set<String> = []
         for record in changes.changedRecords {
@@ -537,18 +674,28 @@ final class FamilyStore {
             switch record.recordType {
             case RecordType.family:
                 if let value = Family(record: record) { family = value }
+            case RecordType.member:
+                if let value = Member(record: record) {
+                    if let index = members.firstIndex(where: { $0.id == value.id }) {
+                        members[index] = value
+                    } else {
+                        members.append(value)
+                    }
+                }
             case RecordType.dayAssignment:
                 if let value = DayAssignment(record: record) {
-                    if assignments[value.dateKey] != value.owner {
-                        changedDays.insert(value.dateKey)
+                    if assignments[value.memberID]?[value.dateKey] != value.owner {
+                        changedDays.insert(value.memberID + "|" + value.dateKey)
                     }
-                    assignments[value.dateKey] = value.owner
-                    directAssigner[value.dateKey] = value.assignedBy
+                    assignments[value.memberID, default: [:]][value.dateKey] = value.owner
+                    directAssigner[value.memberID, default: [:]][value.dateKey] = value.assignedBy
                 }
             case RecordType.changeRequest:
                 if let value = ChangeRequest(record: record) { upsert(value) }
             case RecordType.dayNote:
-                if let value = DayNote(record: record) { notes[value.dateKey] = value.text }
+                if let value = DayNote(record: record) {
+                    notes[value.memberID, default: [:]][value.dateKey] = value.text
+                }
             default:
                 break
             }
@@ -556,21 +703,31 @@ final class FamilyStore {
         for (recordID, recordType) in changes.deletedRecordIDs {
             let name = recordID.recordName
             switch recordType {
+            case RecordType.member:
+                members.removeAll { $0.id == name }
+                assignments.removeValue(forKey: name)
+                directAssigner.removeValue(forKey: name)
+                notes.removeValue(forKey: name)
             case RecordType.dayAssignment:
-                if name.hasPrefix("day-") {
-                    let key = String(name.dropFirst(4))
-                    if assignments[key] != nil { changedDays.insert(key) }
-                    assignments.removeValue(forKey: key)
-                    directAssigner.removeValue(forKey: key)
+                if let parsed = DayAssignment.parseRecordName(name, prefix: "day-") {
+                    if assignments[parsed.memberID]?[parsed.dateKey] != nil {
+                        changedDays.insert(parsed.memberID + "|" + parsed.dateKey)
+                    }
+                    assignments[parsed.memberID]?.removeValue(forKey: parsed.dateKey)
+                    directAssigner[parsed.memberID]?.removeValue(forKey: parsed.dateKey)
                 }
             case RecordType.dayNote:
-                if name.hasPrefix("note-") { notes.removeValue(forKey: String(name.dropFirst(5))) }
+                if let parsed = DayAssignment.parseRecordName(name, prefix: "note-") {
+                    notes[parsed.memberID]?.removeValue(forKey: parsed.dateKey)
+                }
             case RecordType.changeRequest:
                 requests.removeAll { $0.id == name }
             default:
                 break
             }
         }
+        sortMembers()
+        if selectedMember == nil { selectedMemberID = members.first?.id }
         requests.sort { $0.createdAt > $1.createdAt }
         rebuildPendingDateKeys()
         return changedDays
@@ -586,7 +743,11 @@ final class FamilyStore {
     }
 
     private func rebuildPendingDateKeys() {
-        pendingDateKeys = Set(requests.filter(\.isPending).flatMap { $0.changes.map(\.dateKey) })
+        var keys: [String: Set<String>] = [:]
+        for request in requests where request.isPending {
+            keys[request.memberID, default: []].formUnion(request.changes.map(\.dateKey))
+        }
+        pendingDateKeys = keys
     }
 
     private func handleZoneGone() {
@@ -599,70 +760,77 @@ final class FamilyStore {
 
     // MARK: - Day actions
 
-    /// Directly sets or clears a day, when allowed (see `canEditDirectly`).
-    /// Editability follows the day: a direct assignment is stamped with the
-    /// *receiving* parent, so whoever hosts the day can keep adjusting it.
-    func setDayDirectly(_ dateKey: String, to owner: ParentRole?) async {
-        guard canEditDirectly(dateKey, settingTo: owner) else { return }
-        let previousOwner = assignments[dateKey]
-        let previousAssigner = directAssigner[dateKey]
-        guard previousOwner != owner else { return }
+    /// Directly sets or clears a member's day, when allowed (see
+    /// `canEditDirectly`). Editability follows the day: a direct assignment
+    /// is stamped with the *receiving* parent.
+    func setDayDirectly(_ memberID: String, _ dateKey: String, to newOwner: ParentRole?) async {
+        guard canEditDirectly(memberID, dateKey, settingTo: newOwner) else { return }
+        let previousOwner = owner(of: memberID, on: dateKey)
+        let previousAssigner = directAssigner[memberID]?[dateKey]
+        guard previousOwner != newOwner else { return }
 
-        if let owner {
-            assignments[dateKey] = owner
-            directAssigner[dateKey] = owner
+        if let newOwner {
+            assignments[memberID, default: [:]][dateKey] = newOwner
+            directAssigner[memberID, default: [:]][dateKey] = newOwner
         } else {
-            assignments.removeValue(forKey: dateKey)
-            directAssigner.removeValue(forKey: dateKey)
+            assignments[memberID]?.removeValue(forKey: dateKey)
+            directAssigner[memberID]?.removeValue(forKey: dateKey)
         }
         do {
-            if let owner {
-                let record = service.newRecord(type: RecordType.dayAssignment, name: DayAssignment.recordName(for: dateKey))
-                DayAssignment(dateKey: dateKey, owner: owner, assignedBy: owner).apply(to: record)
+            let recordName = DayAssignment.recordName(member: memberID, dateKey: dateKey)
+            if let newOwner {
+                let record = service.newRecord(type: RecordType.dayAssignment, name: recordName)
+                DayAssignment(memberID: memberID, dateKey: dateKey, owner: newOwner, assignedBy: newOwner).apply(to: record)
                 try await service.save(records: [record])
             } else {
-                try await service.save(records: [], deleting: [service.recordID(forName: DayAssignment.recordName(for: dateKey))])
+                try await service.save(records: [], deleting: [service.recordID(forName: recordName)])
             }
             saveCache()
         } catch {
             if let previousOwner {
-                assignments[dateKey] = previousOwner
-                directAssigner[dateKey] = previousAssigner
+                assignments[memberID, default: [:]][dateKey] = previousOwner
+                directAssigner[memberID, default: [:]][dateKey] = previousAssigner
             } else {
-                assignments.removeValue(forKey: dateKey)
-                directAssigner.removeValue(forKey: dateKey)
+                assignments[memberID]?.removeValue(forKey: dateKey)
+                directAssigner[memberID]?.removeValue(forKey: dateKey)
             }
             presentError(error)
         }
     }
 
-    func setNote(_ text: String, for dateKey: String) async {
+    func setNote(_ text: String, member memberID: String, on dateKey: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let previous = notes[dateKey]
+        let previous = note(of: memberID, on: dateKey)
         do {
+            let recordName = DayNote.recordName(member: memberID, dateKey: dateKey)
             if trimmed.isEmpty {
                 guard previous != nil else { return }
-                notes.removeValue(forKey: dateKey)
-                try await service.save(records: [], deleting: [service.recordID(forName: DayNote.recordName(for: dateKey))])
+                notes[memberID]?.removeValue(forKey: dateKey)
+                try await service.save(records: [], deleting: [service.recordID(forName: recordName)])
             } else {
                 guard trimmed != previous else { return }
-                notes[dateKey] = trimmed
-                let record = service.newRecord(type: RecordType.dayNote, name: DayNote.recordName(for: dateKey))
-                DayNote(dateKey: dateKey, text: trimmed).apply(to: record)
+                notes[memberID, default: [:]][dateKey] = trimmed
+                let record = service.newRecord(type: RecordType.dayNote, name: recordName)
+                DayNote(memberID: memberID, dateKey: dateKey, text: trimmed).apply(to: record)
                 try await service.save(records: [record])
             }
             saveCache()
         } catch {
-            notes[dateKey] = previous
+            if let previous {
+                notes[memberID, default: [:]][dateKey] = previous
+            } else {
+                notes[memberID]?.removeValue(forKey: dateKey)
+            }
             presentError(error)
         }
     }
 
     // MARK: - Change requests
 
-    func submitRequest(changes: [DayChange], message: String, kind: ChangeRequest.Kind = .manual) async -> Bool {
+    func submitRequest(member memberID: String, changes: [DayChange], message: String, kind: ChangeRequest.Kind = .manual) async -> Bool {
         guard !changes.isEmpty else { return false }
         let request = ChangeRequest(
+            memberID: memberID,
             requester: myRole,
             changes: changes,
             message: message.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -703,13 +871,14 @@ final class FamilyStore {
                 )
                 return
             }
+            let memberID = serverRequest.memberID
 
             // Skip days that changed since the request was proposed, so an
             // approval can never silently overwrite newer agreements.
             var validChanges: [DayChange] = []
             var staleCount = 0
             for change in serverRequest.changes {
-                let current = assignments[change.dateKey]
+                let current = owner(of: memberID, on: change.dateKey)
                 if current == change.newOwner { continue }
                 if current == change.oldOwner {
                     validChanges.append(change)
@@ -720,8 +889,9 @@ final class FamilyStore {
 
             var dayRecords: [CKRecord] = []
             for change in validChanges {
-                let record = service.newRecord(type: RecordType.dayAssignment, name: DayAssignment.recordName(for: change.dateKey))
-                DayAssignment(dateKey: change.dateKey, owner: change.newOwner, assignedBy: nil).apply(to: record)
+                let recordName = DayAssignment.recordName(member: memberID, dateKey: change.dateKey)
+                let record = service.newRecord(type: RecordType.dayAssignment, name: recordName)
+                DayAssignment(memberID: memberID, dateKey: change.dateKey, owner: change.newOwner, assignedBy: nil).apply(to: record)
                 dayRecords.append(record)
             }
             var resolved = serverRequest
@@ -742,8 +912,8 @@ final class FamilyStore {
             }
 
             for change in validChanges {
-                assignments[change.dateKey] = change.newOwner
-                directAssigner.removeValue(forKey: change.dateKey)
+                assignments[memberID, default: [:]][change.dateKey] = change.newOwner
+                directAssigner[memberID]?.removeValue(forKey: change.dateKey)
             }
             upsert(resolved)
             rememberRequestStatus(resolved)
@@ -794,22 +964,21 @@ final class FamilyStore {
         var skippedPending: Int
     }
 
-    /// Applies a generated schedule. While flying solo it is applied
-    /// immediately; once both parents are connected, a bulk schedule always
-    /// becomes ONE approval request (all-or-nothing) — mass changes are never
-    /// unilateral, and a decline can never leave a half-applied patchwork.
-    /// Days inside pending requests are always skipped.
-    func applyPattern(_ proposal: [String: ParentRole]) async -> PatternOutcome? {
+    /// Applies a generated schedule to ONE member. While flying solo it is
+    /// applied immediately; once both parents are connected, a bulk schedule
+    /// always becomes ONE approval request (all-or-nothing). Days inside
+    /// pending requests are always skipped.
+    func applyPattern(member memberID: String, proposal: [String: ParentRole]) async -> PatternOutcome? {
         var differing: [(String, ParentRole)] = []
         var skippedPending = 0
 
-        for (dateKey, owner) in proposal.sorted(by: { $0.key < $1.key }) {
-            if assignments[dateKey] == owner { continue }
-            if pendingDateKeys.contains(dateKey) {
+        for (dateKey, newOwner) in proposal.sorted(by: { $0.key < $1.key }) {
+            if owner(of: memberID, on: dateKey) == newOwner { continue }
+            if isPending(memberID, dateKey) {
                 skippedPending += 1
                 continue
             }
-            differing.append((dateKey, owner))
+            differing.append((dateKey, newOwner))
         }
 
         guard !differing.isEmpty else {
@@ -818,25 +987,26 @@ final class FamilyStore {
 
         do {
             if family?.partnerHasJoined == true {
-                let changes = differing.map { key, owner in
-                    DayChange(dateKey: key, newOwner: owner, oldOwner: assignments[key])
+                let changes = differing.map { key, newOwner in
+                    DayChange(dateKey: key, newOwner: newOwner, oldOwner: owner(of: memberID, on: key))
                 }
-                let sent = await submitRequest(changes: changes, message: "", kind: .pattern)
+                let sent = await submitRequest(member: memberID, changes: changes, message: "", kind: .pattern)
                 if !sent { return nil }
                 return PatternOutcome(appliedDirectly: 0, sentForApproval: changes.count, skippedPending: skippedPending)
             } else {
                 var records: [CKRecord] = []
-                for (key, owner) in differing {
-                    let record = service.newRecord(type: RecordType.dayAssignment, name: DayAssignment.recordName(for: key))
-                    DayAssignment(dateKey: key, owner: owner, assignedBy: owner).apply(to: record)
+                for (key, newOwner) in differing {
+                    let recordName = DayAssignment.recordName(member: memberID, dateKey: key)
+                    let record = service.newRecord(type: RecordType.dayAssignment, name: recordName)
+                    DayAssignment(memberID: memberID, dateKey: key, owner: newOwner, assignedBy: newOwner).apply(to: record)
                     records.append(record)
                 }
                 for chunk in records.chunked(into: 200) {
                     try await service.save(records: chunk)
                 }
-                for (key, owner) in differing {
-                    assignments[key] = owner
-                    directAssigner[key] = owner
+                for (key, newOwner) in differing {
+                    assignments[memberID, default: [:]][key] = newOwner
+                    directAssigner[memberID, default: [:]][key] = newOwner
                 }
                 saveCache()
                 return PatternOutcome(appliedDirectly: differing.count, sentForApproval: 0, skippedPending: skippedPending)
@@ -849,12 +1019,10 @@ final class FamilyStore {
 
     // MARK: - Settings actions
 
-    func updateProfile(childName: String, myName: String, myColorHex: String) async {
+    func updateProfile(myName: String, myColorHex: String) async {
         guard var updated = family else { return }
         do {
             let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
-            record["childName"] = childName
-            updated.childName = childName
             if myRole == .parentA {
                 record["nameA"] = myName
                 record["colorA"] = myColorHex
@@ -940,7 +1108,8 @@ final class FamilyStore {
     func ensureInvitationReady() async {
         guard myRole == .parentA, shareURL == nil, family != nil else { return }
         do {
-            let title = String(localized: "Custody calendar for \(family?.childName ?? "")")
+            let firstName = members.first?.name ?? ""
+            let title = String(localized: "Custody calendar for \(firstName)")
             let url = try await service.createZoneAndShare(title: title)
             shareURL = url
             UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
@@ -951,16 +1120,18 @@ final class FamilyStore {
 
     private func resetLocalState() {
         let defaults = UserDefaults.standard
-        for key in [Keys.role, Keys.setupComplete, Keys.zoneOwnerName, Keys.changeToken, Keys.shareURL, Keys.requestStatuses, Keys.joinNeedsProfile, Keys.shareLocked] {
+        for key in [Keys.role, Keys.setupComplete, Keys.zoneOwnerName, Keys.changeToken, Keys.shareURL, Keys.requestStatuses, Keys.joinNeedsProfile, Keys.shareLocked, Keys.selectedMember] {
             defaults.removeObject(forKey: key)
         }
         try? FileManager.default.removeItem(at: Self.cacheURL)
         family = nil
+        members = []
         assignments = [:]
         directAssigner = [:]
         notes = [:]
         requests = []
-        pendingDateKeys = []
+        pendingDateKeys = [:]
+        selectedMemberID = nil
         shareURL = nil
         setupComplete = false
         hasZoneAccess = false
@@ -1011,14 +1182,15 @@ final class FamilyStore {
             statuses[request.id] = request.status.rawValue
 
             if previous != request.status.rawValue {
-                daysExplainedByRequests.formUnion(request.changes.map(\.dateKey))
+                daysExplainedByRequests.formUnion(request.changes.map { request.memberID + "|" + $0.dateKey })
             }
 
             if request.requester != myRole, request.isPending, previous == nil {
                 let count = request.changes.count
+                let memberName = member(request.memberID)?.name ?? ""
                 let body = count == 1
-                    ? String(localized: "\(otherName) proposes a change for \(Day.shortLabel(for: request.changes[0].dateKey)).")
-                    : String(localized: "\(otherName) proposes changes to \(count) days.")
+                    ? String(localized: "\(otherName) proposes a change for \(memberName): \(Day.shortLabel(for: request.changes[0].dateKey)).")
+                    : String(localized: "\(otherName) proposes changes to \(count) of \(memberName)'s days.")
                 postLocalNotification(
                     id: "request-\(request.id)",
                     title: String(localized: "New change request"),
@@ -1043,9 +1215,14 @@ final class FamilyStore {
         let unexplained = remotelyChangedDays.subtracting(daysExplainedByRequests)
         if !unexplained.isEmpty, family?.partnerHasJoined == true {
             let count = unexplained.count
-            let body = count == 1
-                ? String(localized: "\(otherName) updated \(Day.shortLabel(for: unexplained.first ?? "")) on the calendar.")
-                : String(localized: "\(otherName) updated \(count) days on the calendar.")
+            var body = String(localized: "\(otherName) updated \(count) days on the calendar.")
+            if count == 1, let composite = unexplained.first {
+                let parts = composite.split(separator: "|", maxSplits: 1)
+                if parts.count == 2 {
+                    let memberName = member(String(parts[0]))?.name ?? ""
+                    body = String(localized: "\(otherName) updated \(memberName)'s day \(Day.shortLabel(for: String(parts[1]))).")
+                }
+            }
             postLocalNotification(
                 id: "days-\(Int(Date().timeIntervalSince1970))",
                 title: String(localized: "Calendar updated"),
@@ -1085,9 +1262,10 @@ final class FamilyStore {
 
     private struct CachePayload: Codable {
         var family: Family?
-        var assignments: [String: ParentRole]
-        var directAssigner: [String: ParentRole]?
-        var notes: [String: String]
+        var members: [Member]
+        var assignments: [String: [String: ParentRole]]
+        var directAssigner: [String: [String: ParentRole]]
+        var notes: [String: [String: String]]
         var requests: [ChangeRequest]
     }
 
@@ -1100,6 +1278,7 @@ final class FamilyStore {
     private func saveCache() {
         let payload = CachePayload(
             family: family,
+            members: members,
             assignments: assignments,
             directAssigner: directAssigner,
             notes: notes,
@@ -1115,10 +1294,13 @@ final class FamilyStore {
               let payload = try? JSONDecoder().decode(CachePayload.self, from: data)
         else { return }
         family = payload.family
+        members = payload.members
         assignments = payload.assignments
-        directAssigner = payload.directAssigner ?? [:]
+        directAssigner = payload.directAssigner
         notes = payload.notes
         requests = payload.requests
+        sortMembers()
+        if selectedMember == nil { selectedMemberID = members.first?.id }
         rebuildPendingDateKeys()
     }
 

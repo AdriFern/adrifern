@@ -1,6 +1,8 @@
 # 🪺 Nido — Shared Custody Calendar for iPhone
 
-Nido is a simple, friendly iPhone app for separated parents to coordinate custody of their child:
+Nido is a simple, friendly iPhone app for separated parents to coordinate custody of their children — and pets:
+
+- **Multiple children & pets** — each family member has their own independent custody calendar (schedules can differ per child or pet). Switch between them with one tap; add, rename or remove members in Settings.
 
 - **Tap-to-assign calendar** — each parent has a color; tap any unassigned day to record who has your child.
 - **Approval workflow** — moving a day to the other parent, or changing a day they recorded or that was agreed through a request, requires their approval. Proposals land in a Requests inbox with Approve / Decline buttons (or respond right on the day). Days you recorded for yourself stay yours to clear.
@@ -44,7 +46,7 @@ Two options:
 
 ## Using the app
 
-1. **Parent 1** opens Nido → *Set up a new calendar* → enters their name, the child's name, and picks a color.
+1. **Parent 1** opens Nido → *Set up a new calendar* → enters their name, the first child's (or pet's) name, and picks a color. More children and pets can be added anytime in Settings.
 2. Nido shows an **invitation QR code**. Parent 2 installs Nido, opens *I have an invitation*, and scans the code (or taps the link sent by Messages/email — or pastes it).
 3. Parent 2 enters their name and color. Both calendars are now live and in sync.
 4. Tap any **unassigned** day to record who has the child — the other parent gets a heads-up notification. Use the ✨ Schedule button for repeating patterns: while you're solo they apply instantly; once your co-parent has joined, the whole schedule goes to them as **one proposal** and nothing changes until they approve it.
