@@ -3,86 +3,29 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(FamilyStore.self) private var store
 
-    @State private var myName = ""
-    @State private var myColor = Palette.defaultA
-    @State private var loaded = false
-    @State private var isSavingProfile = false
-    @State private var showInvite = false
-    @State private var confirmLeave = false
-    @State private var confirmRemoveCoParent = false
-    @State private var isRemovingCoParent = false
     @State private var showAddMember = false
+    @State private var showAddFamily = false
     @State private var memberToDelete: Member?
     @State private var memberNames: [String: String] = [:]
-
-    private var hasProfileChanges: Bool {
-        guard let family = store.family else { return false }
-        return myName != family.name(of: store.myRole)
-            || myColor != family.colorHex(of: store.myRole)
-    }
 
     var body: some View {
         NavigationStack {
             List {
-                profileSection
+                familiesSection
                 membersSection
-                coParentSection
                 syncSection
-                dangerSection
                 aboutSection
             }
             .listStyle(.insetGrouped)
             .navigationTitle(Text("Settings"))
-            .onAppear { loadFromStore() }
-            .onChange(of: store.family) { _, _ in
-                // Refresh the form from a sync only when the user isn't
-                // mid-edit, so their typing is never discarded.
-                if !hasProfileChanges { loadFromStore(force: true) }
-            }
+            .onAppear { syncMemberNames() }
             .onChange(of: store.members) { _, _ in syncMemberNames() }
-            .sheet(isPresented: $showInvite) {
-                NavigationStack {
-                    InviteView(isOnboarding: false)
-                }
-            }
             .sheet(isPresented: $showAddMember) {
                 AddMemberSheet()
                     .presentationDetents([.medium])
             }
-            .confirmationDialog(
-                store.myRole == .parentA
-                    ? Text("Delete this shared calendar?")
-                    : Text("Leave this shared calendar?"),
-                isPresented: $confirmLeave,
-                titleVisibility: .visible
-            ) {
-                Button(
-                    store.myRole == .parentA ? String(localized: "Delete for both of us") : String(localized: "Leave calendar"),
-                    role: .destructive
-                ) {
-                    Task { await store.leaveFamily() }
-                }
-                Button("Keep it", role: .cancel) {}
-            } message: {
-                Text(store.myRole == .parentA
-                     ? String(localized: "This permanently deletes the calendar, requests and notes for both parents.")
-                     : String(localized: "You'll lose access to the shared calendar. To join again later, \(store.otherName) will need to remove you in their Settings and send a new invitation."))
-            }
-            .confirmationDialog(
-                Text("Remove \(store.otherName) from the calendar?"),
-                isPresented: $confirmRemoveCoParent,
-                titleVisibility: .visible
-            ) {
-                Button(String(localized: "Remove co-parent"), role: .destructive) {
-                    Task {
-                        isRemovingCoParent = true
-                        await store.removeCoParent()
-                        isRemovingCoParent = false
-                    }
-                }
-                Button("Keep it", role: .cancel) {}
-            } message: {
-                Text("They lose access immediately and the old invitation link stops working. The calendar and its history stay, and you can adjust all days freely until someone joins again.")
+            .sheet(isPresented: $showAddFamily) {
+                AddFamilySheet()
             }
             .confirmationDialog(
                 Text("Remove \(memberToDelete?.name ?? "") from Nido?"),
@@ -105,46 +48,53 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Families
 
-    private var profileSection: some View {
+    private var familiesSection: some View {
         Section {
-            HStack {
-                Text("Your name")
-                Spacer()
-                TextField("Name", text: $myName)
-                    .multilineTextAlignment(.trailing)
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your color")
-                ColorSwatchPicker(
-                    selection: $myColor,
-                    disabledHex: store.family?.colorHex(of: store.otherRole)
-                )
-            }
-            if hasProfileChanges {
-                Button {
-                    Task {
-                        isSavingProfile = true
-                        await store.updateProfile(
-                            myName: myName.trimmingCharacters(in: .whitespaces),
-                            myColorHex: myColor
-                        )
-                        isSavingProfile = false
-                    }
+            ForEach(store.familyRefs) { familyRef in
+                NavigationLink {
+                    FamilySettingsView(familyID: familyRef.id)
                 } label: {
-                    if isSavingProfile {
-                        ProgressView()
-                    } else {
-                        Text("Save changes").bold()
+                    HStack(spacing: 10) {
+                        if let family = store.family(familyRef.id) {
+                            ParentDot(colorHex: family.colorHex(of: familyRef.role.other), size: 12)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(family.partnerHasJoined || familyRef.role == .parentB
+                                     ? String(localized: "With \(family.name(of: familyRef.role.other))")
+                                     : String(localized: "Waiting for your co-parent"))
+                                    .font(.subheadline.weight(.semibold))
+                                Text(memberSummary(for: familyRef.id))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if store.family(familyRef.id)?.partnerHasJoined == true {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        }
                     }
                 }
-                .disabled(isSavingProfile || myName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            Button {
+                showAddFamily = true
+            } label: {
+                Label("Add another family (new co-parent)", systemImage: "plus.circle.fill")
             }
         } header: {
-            Text("You")
+            Text("Families")
+        } footer: {
+            Text("Each family is a separate, private calendar with one co-parent. Families never see each other's schedules.")
         }
     }
+
+    private func memberSummary(for familyID: String) -> String {
+        store.membersOf(familyID).map(\.name).joined(separator: ", ")
+    }
+
+    // MARK: - Members
 
     private var membersSection: some View {
         Section {
@@ -165,15 +115,22 @@ struct SettingsView: View {
                     .buttonStyle(.borderless)
                     .accessibilityLabel(Text("Switch between child and pet"))
 
-                    TextField(
-                        "Name",
-                        text: Binding(
-                            get: { draftName },
-                            set: { memberNames[member.id] = $0 }
+                    VStack(alignment: .leading, spacing: 1) {
+                        TextField(
+                            "Name",
+                            text: Binding(
+                                get: { draftName },
+                                set: { memberNames[member.id] = $0 }
+                            )
                         )
-                    )
-                    .onSubmit {
-                        Task { await store.renameMember(member.id, to: draftName) }
+                        .onSubmit {
+                            Task { await store.renameMember(member.id, to: draftName) }
+                        }
+                        if store.familyRefs.count > 1, let ctx = store.context(member.id) {
+                            Text("With \(ctx.otherName)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     if draftName.trimmingCharacters(in: .whitespaces) != member.name,
@@ -186,7 +143,7 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.borderless)
                         .accessibilityLabel(Text("Save name"))
-                    } else if store.members.count > 1 {
+                    } else if canDelete(member) {
                         Button {
                             memberToDelete = member
                         } label: {
@@ -199,12 +156,10 @@ struct SettingsView: View {
                     }
                 }
             }
-            if store.members.count < Member.maxCount {
-                Button {
-                    showAddMember = true
-                } label: {
-                    Label("Add a child or pet", systemImage: "plus.circle.fill")
-                }
+            Button {
+                showAddMember = true
+            } label: {
+                Label("Add a child or pet", systemImage: "plus.circle.fill")
             }
         } header: {
             Text("Children & pets")
@@ -213,46 +168,12 @@ struct SettingsView: View {
         }
     }
 
-    private var coParentSection: some View {
-        Section {
-            if let family = store.family {
-                if family.partnerHasJoined {
-                    HStack(spacing: 10) {
-                        ParentDot(colorHex: family.colorHex(of: store.otherRole), size: 12)
-                        Text(family.name(of: store.otherRole))
-                        Spacer()
-                        Label("Connected", systemImage: "checkmark.circle.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.green)
-                            .labelStyle(.titleAndIcon)
-                    }
-                    if store.myRole == .parentA {
-                        Button(role: .destructive) {
-                            confirmRemoveCoParent = true
-                        } label: {
-                            if isRemovingCoParent {
-                                ProgressView()
-                            } else {
-                                Text("Remove co-parent…")
-                            }
-                        }
-                        .disabled(isRemovingCoParent)
-                    }
-                } else if store.myRole == .parentA {
-                    Button {
-                        showInvite = true
-                    } label: {
-                        Label("Show invitation", systemImage: "qrcode")
-                    }
-                    Text("Your co-parent hasn't joined yet. Send them the invitation so you can plan together.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        } header: {
-            Text("Co-parent")
-        }
+    private func canDelete(_ member: Member) -> Bool {
+        guard let familyID = store.familyID(ofMember: member.id) else { return false }
+        return store.membersOf(familyID).count > 1
     }
+
+    // MARK: - Sync / About
 
     private var syncSection: some View {
         Section {
@@ -287,16 +208,6 @@ struct SettingsView: View {
         }
     }
 
-    private var dangerSection: some View {
-        Section {
-            Button(role: .destructive) {
-                confirmLeave = true
-            } label: {
-                Text(store.myRole == .parentA ? "Delete shared calendar" : "Leave shared calendar")
-            }
-        }
-    }
-
     private var aboutSection: some View {
         Section {
             HStack {
@@ -315,14 +226,6 @@ struct SettingsView: View {
 
     // MARK: - Helpers
 
-    private func loadFromStore(force: Bool = false) {
-        guard let family = store.family, force || !loaded else { return }
-        loaded = true
-        myName = family.name(of: store.myRole)
-        myColor = family.colorHex(of: store.myRole)
-        syncMemberNames()
-    }
-
     private func syncMemberNames() {
         // Seed only missing entries so a remote sync never clobbers a
         // rename the user is typing right now.
@@ -333,6 +236,193 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Per-family settings
+
+struct FamilySettingsView: View {
+    @Environment(FamilyStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let familyID: String
+
+    @State private var myName = ""
+    @State private var myColor = Palette.defaultA
+    @State private var loaded = false
+    @State private var isSavingProfile = false
+    @State private var showInvite = false
+    @State private var confirmLeave = false
+    @State private var confirmRemoveCoParent = false
+    @State private var isRemovingCoParent = false
+
+    private var familyRef: FamilyRef? { store.ref(familyID) }
+    private var family: Family? { store.family(familyID) }
+    private var myRole: ParentRole { familyRef?.role ?? .parentA }
+    private var otherName: String {
+        family?.name(of: myRole.other) ?? String(localized: "Co-parent")
+    }
+
+    private var hasProfileChanges: Bool {
+        guard let family else { return false }
+        return myName != family.name(of: myRole) || myColor != family.colorHex(of: myRole)
+    }
+
+    var body: some View {
+        List {
+            profileSection
+            coParentSection
+            dangerSection
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle(Text("Family"))
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { loadFromFamily() }
+        .onChange(of: family) { _, _ in
+            // Refresh the form from a sync only when the user isn't
+            // mid-edit, so their typing is never discarded.
+            if !hasProfileChanges { loadFromFamily(force: true) }
+        }
+        .sheet(isPresented: $showInvite) {
+            NavigationStack {
+                InviteView(familyID: familyID, isOnboarding: false)
+            }
+        }
+        .confirmationDialog(
+            myRole == .parentA
+                ? Text("Delete this shared calendar?")
+                : Text("Leave this shared calendar?"),
+            isPresented: $confirmLeave,
+            titleVisibility: .visible
+        ) {
+            Button(
+                myRole == .parentA ? String(localized: "Delete for both of us") : String(localized: "Leave calendar"),
+                role: .destructive
+            ) {
+                Task {
+                    await store.leaveFamily(familyID)
+                    dismiss()
+                }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text(myRole == .parentA
+                 ? String(localized: "This permanently deletes the calendar, requests and notes for both parents.")
+                 : String(localized: "You'll lose access to the shared calendar. To join again later, \(otherName) will need to remove you in their Settings and send a new invitation."))
+        }
+        .confirmationDialog(
+            Text("Remove \(otherName) from the calendar?"),
+            isPresented: $confirmRemoveCoParent,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Remove co-parent"), role: .destructive) {
+                Task {
+                    isRemovingCoParent = true
+                    await store.removeCoParent(familyID: familyID)
+                    isRemovingCoParent = false
+                }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("They lose access immediately and the old invitation link stops working. The calendar and its history stay, and you can adjust all days freely until someone joins again.")
+        }
+    }
+
+    private var profileSection: some View {
+        Section {
+            HStack {
+                Text("Your name")
+                Spacer()
+                TextField("Name", text: $myName)
+                    .multilineTextAlignment(.trailing)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your color")
+                ColorSwatchPicker(
+                    selection: $myColor,
+                    disabledHex: family?.colorHex(of: myRole.other)
+                )
+            }
+            if hasProfileChanges {
+                Button {
+                    Task {
+                        isSavingProfile = true
+                        await store.updateProfile(
+                            familyID: familyID,
+                            myName: myName.trimmingCharacters(in: .whitespaces),
+                            myColorHex: myColor
+                        )
+                        isSavingProfile = false
+                    }
+                } label: {
+                    if isSavingProfile {
+                        ProgressView()
+                    } else {
+                        Text("Save changes").bold()
+                    }
+                }
+                .disabled(isSavingProfile || myName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        } header: {
+            Text("You in this family")
+        }
+    }
+
+    private var coParentSection: some View {
+        Section {
+            if let family {
+                if family.partnerHasJoined {
+                    HStack(spacing: 10) {
+                        ParentDot(colorHex: family.colorHex(of: myRole.other), size: 12)
+                        Text(family.name(of: myRole.other))
+                        Spacer()
+                        Label("Connected", systemImage: "checkmark.circle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.green)
+                            .labelStyle(.titleAndIcon)
+                    }
+                    if myRole == .parentA {
+                        Button(role: .destructive) {
+                            confirmRemoveCoParent = true
+                        } label: {
+                            if isRemovingCoParent {
+                                ProgressView()
+                            } else {
+                                Text("Remove co-parent…")
+                            }
+                        }
+                        .disabled(isRemovingCoParent)
+                    }
+                } else if myRole == .parentA {
+                    Button {
+                        showInvite = true
+                    } label: {
+                        Label("Show invitation", systemImage: "qrcode")
+                    }
+                    Text("Your co-parent hasn't joined yet. Send them the invitation so you can plan together.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Co-parent")
+        }
+    }
+
+    private var dangerSection: some View {
+        Section {
+            Button(role: .destructive) {
+                confirmLeave = true
+            } label: {
+                Text(myRole == .parentA ? "Delete shared calendar" : "Leave shared calendar")
+            }
+        }
+    }
+
+    private func loadFromFamily(force: Bool = false) {
+        guard let family, force || !loaded else { return }
+        loaded = true
+        myName = family.name(of: myRole)
+        myColor = family.colorHex(of: myRole)
+    }
+}
+
 // MARK: - Add member sheet
 
 private struct AddMemberSheet: View {
@@ -340,7 +430,12 @@ private struct AddMemberSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var kind: Member.Kind = .child
+    @State private var targetFamilyID: String?
     @State private var isSaving = false
+
+    private var resolvedFamilyID: String? {
+        targetFamilyID ?? store.familyRefs.first?.id
+    }
 
     var body: some View {
         NavigationStack {
@@ -365,6 +460,24 @@ private struct AddMemberSheet: View {
                     .pickerStyle(.segmented)
                 }
 
+                if store.familyRefs.count > 1 {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Which family?")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Which family?", selection: Binding(
+                            get: { resolvedFamilyID ?? "" },
+                            set: { targetFamilyID = $0 }
+                        )) {
+                            ForEach(store.familyRefs) { familyRef in
+                                Text(store.family(familyRef.id)?.name(of: familyRef.role.other) ?? "")
+                                    .tag(familyRef.id)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+
                 Text("They get their own custody calendar with the same colors and approval rules.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -373,11 +486,12 @@ private struct AddMemberSheet: View {
 
                 Button {
                     Task {
+                        guard let familyID = resolvedFamilyID else { return }
                         isSaving = true
-                        let added = await store.addMember(name: name, kind: kind)
+                        let added = await store.addMember(familyID: familyID, name: name, kind: kind)
                         isSaving = false
                         if added {
-                            store.selectedMemberID = store.members.last?.id
+                            store.selectedMemberID = store.membersOf(familyID).last?.id
                             dismiss()
                         }
                     }
@@ -389,11 +503,54 @@ private struct AddMemberSheet: View {
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(isSaving || name.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(isSaving || name.trimmingCharacters(in: .whitespaces).isEmpty || resolvedFamilyID == nil)
             }
             .padding(20)
             .background(Theme.background)
             .navigationTitle(Text("Add a child or pet"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Add family sheet (a NEW co-parent relationship)
+
+struct AddFamilySheet: View {
+    @Environment(FamilyStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 14) {
+                Text("A family is one co-parent plus the children or pets you share with them. Families are completely separate — the other family never sees anything.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+
+                NavigationLink {
+                    CreateFamilyView(isAdditional: true)
+                } label: {
+                    Text("Set up a new calendar")
+                }
+                .buttonStyle(PrimaryButtonStyle())
+
+                NavigationLink {
+                    JoinFamilyView()
+                } label: {
+                    Text("I have an invitation")
+                }
+                .buttonStyle(SecondaryButtonStyle())
+
+                Spacer()
+            }
+            .padding(24)
+            .background(Theme.background)
+            .navigationTitle(Text("Add another family"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

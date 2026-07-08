@@ -2,7 +2,8 @@
 
 Nido is a simple, friendly iPhone app for separated parents to coordinate custody of their children — and pets:
 
-- **Multiple children & pets** — each family member (up to 8) has their own independent custody calendar (schedules can differ per child or pet). Switch between them with one tap; add, rename or remove members in Settings. Removing a member permanently deletes their whole calendar and cancels their pending requests — both parents can do it, and the other parent is always notified.
+- **Multiple families** — one person can have custody arrangements with **different exes** from the same app. Each family (one co-parent + the kids/pets you share with them) lives in its own private iCloud zone with its own invitation: families never see each other's schedules, members, or even that the others exist. Add another family anytime in Settings; requests always route to the right co-parent.
+- **Multiple children & pets** — each family member (up to 8 per family) has their own independent custody calendar (schedules can differ per child or pet). Switch between them with one tap; add, rename or remove members in Settings. Removing a member permanently deletes their whole calendar and cancels their pending requests — both parents of that family can do it, and the other parent is always notified.
 
 - **Tap-to-assign calendar** — each parent has a color; tap any unassigned day to record who has your child.
 - **Approval workflow** — moving a day to the other parent, or changing a day they recorded or that was agreed through a request, requires their approval. Proposals land in a Requests inbox with Approve / Decline buttons (or respond right on the day). Days you recorded for yourself stay yours to clear.
@@ -69,7 +70,7 @@ Nido/
 
 ## Privacy & security
 
-- All data is stored in the **calendar creator's private iCloud database** inside a dedicated record zone shared through CloudKit.
+- All data is stored in the **calendar creator's private iCloud database**, one dedicated record zone per family, each shared through CloudKit with exactly that family's co-parent. Different families are cryptographically separate shares — no cross-visibility is possible.
 - The invitation link is the only way in. Once your co-parent joins, the share's public permission is revoked on iCloud, so the link goes dead for everyone else; rejoining from the same iCloud account remains possible. Before the join happens, treat the link like a house key and send it directly to your co-parent only.
 - The calendar creator can disconnect the co-parent at any time (Settings → Remove co-parent). Their access is revoked immediately, the old invitation link is permanently destroyed, and a fresh link is minted the next time the invitation screen is opened — the calendar and its history stay.
 - Apple's CloudKit handles authentication (iCloud accounts), encryption in transit, and at rest.

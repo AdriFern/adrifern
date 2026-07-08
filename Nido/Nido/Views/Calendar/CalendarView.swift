@@ -19,6 +19,10 @@ struct CalendarView: View {
 
     private var visibleMonth: Month { baseMonth.adding(monthOffset) }
     private var member: Member? { store.selectedMember }
+    private var ctx: FamilyStore.MemberContext? {
+        guard let member else { return nil }
+        return store.context(member.id)
+    }
     private var memberAssignments: [String: ParentRole] {
         guard let member else { return [:] }
         return store.assignments[member.id] ?? [:]
@@ -43,7 +47,7 @@ struct CalendarView: View {
 
                 TabView(selection: $monthOffset) {
                     ForEach(Self.offsetRange, id: \.self) { offset in
-                        MonthGridView(month: baseMonth.adding(offset), memberID: member?.id ?? "") { dayKey in
+                        MonthGridView(month: baseMonth.adding(offset), memberID: member?.id ?? "", family: ctx?.family) { dayKey in
                             selectedDay = SelectedDay(key: dayKey)
                         }
                         .padding(.horizontal, 16)
@@ -110,14 +114,16 @@ struct CalendarView: View {
                 }
             }
             .sheet(isPresented: $showInvite) {
-                NavigationStack {
-                    InviteView(isOnboarding: false)
+                if let ctx {
+                    NavigationStack {
+                        InviteView(familyID: ctx.familyID, isOnboarding: false)
+                    }
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 // Shown once the coaching card has retired, so the bottom of
                 // the screen never stacks two cards on small phones.
-                if store.family?.partnerHasJoined == false, !memberAssignments.isEmpty {
+                if let ctx, ctx.myRole == .parentA, !ctx.partnerJoined, !memberAssignments.isEmpty {
                     inviteBanner
                         .padding(.horizontal, 16)
                         .padding(.bottom, 4)
@@ -191,7 +197,7 @@ struct CalendarView: View {
     private var legend: some View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
-                if let family = store.family {
+                if let family = ctx?.family {
                     let counts = monthCounts
                     LegendChip(
                         name: family.name(of: .parentA),
@@ -336,6 +342,7 @@ struct MonthGridView: View {
     @Environment(FamilyStore.self) private var store
     let month: Month
     let memberID: String
+    let family: Family?
     var onSelect: (String) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
@@ -352,7 +359,7 @@ struct MonthGridView: View {
                     DayCell(
                         dayNumber: index + 1,
                         owner: store.owner(of: memberID, on: dayKey),
-                        family: store.family,
+                        family: family,
                         isToday: dayKey == Day.todayKey,
                         hasNote: store.note(of: memberID, on: dayKey) != nil,
                         isPending: store.isPending(memberID, dayKey)

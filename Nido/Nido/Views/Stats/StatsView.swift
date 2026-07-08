@@ -21,7 +21,7 @@ struct StatsView: View {
 
                     yearPicker
 
-                    if let family = store.family {
+                    if let family = store.selectedMember.flatMap({ store.context($0.id)?.family }) {
                         yearSummaryCard(family: family)
                         monthlyBreakdownCard(family: family)
                     }

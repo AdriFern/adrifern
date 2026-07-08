@@ -17,6 +17,12 @@ struct DayDetailSheet: View {
 
     private var owner: ParentRole? { store.owner(of: member.id, on: dayKey) }
 
+    /// Family context for THIS member (its co-parent may differ from other
+    /// members' co-parents).
+    private var ctx: FamilyStore.MemberContext? { store.context(member.id) }
+
+    private var otherName: String { ctx?.otherName ?? String(localized: "Co-parent") }
+
     private var pendingChange: (request: ChangeRequest, change: DayChange)? {
         for request in store.requests where request.isPending && request.memberID == member.id {
             if let change = request.changes.first(where: { $0.dateKey == dayKey }) {
@@ -92,7 +98,7 @@ struct DayDetailSheet: View {
             Text(Day.longLabel(for: dayKey))
                 .font(.title3.bold())
 
-            if let owner, let family = store.family {
+            if let owner, let family = ctx?.family {
                 HStack(spacing: 8) {
                     ParentDot(colorHex: family.colorHex(of: owner), size: 12)
                     Text("\(member.name) is with \(family.name(of: owner))")
@@ -115,9 +121,9 @@ struct DayDetailSheet: View {
     // MARK: - Pending request info + inline response
 
     private func pendingCard(_ pending: (request: ChangeRequest, change: DayChange)) -> some View {
-        let isMine = pending.request.requester == store.myRole
-        let requesterName = store.family?.name(of: pending.request.requester) ?? ""
-        let newOwnerName = store.family?.name(of: pending.change.newOwner) ?? ""
+        let isMine = pending.request.requester == ctx?.myRole
+        let requesterName = ctx?.family.name(of: pending.request.requester) ?? ""
+        let newOwnerName = ctx?.family.name(of: pending.change.newOwner) ?? ""
         return VStack(alignment: .leading, spacing: 12) {
             Label {
                 Text("Awaiting approval")
@@ -128,7 +134,7 @@ struct DayDetailSheet: View {
             }
 
             if isMine {
-                Text("You proposed that this day goes to \(newOwnerName). \(store.otherName) hasn't responded yet.")
+                Text("You proposed that this day goes to \(newOwnerName). \(otherName) hasn't responded yet.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Button(role: .destructive) {
@@ -191,7 +197,7 @@ struct DayDetailSheet: View {
 
     private var whoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let family = store.family {
+            if let family = ctx?.family {
                 Text("Who has \(member.name) this day?")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -228,9 +234,9 @@ struct DayDetailSheet: View {
             return String(localized: "Unassigned days can be filled in by either parent.")
         }
         if store.canEditDirectly(member.id, dayKey, settingTo: nil) {
-            return String(localized: "You can clear this day, but giving it to \(store.otherName) needs their approval.")
+            return String(localized: "You can clear this day, but giving it to \(otherName) needs their approval.")
         }
-        return String(localized: "Changes to assigned days need \(store.otherName)'s approval.")
+        return String(localized: "Changes to assigned days need \(otherName)'s approval.")
     }
 
     /// Tapping a parent either records the day directly (when allowed) or
@@ -240,7 +246,7 @@ struct DayDetailSheet: View {
         let isDirect = store.canEditDirectly(member.id, dayKey, settingTo: role)
         // Giving a day to the other parent can't be undone without their
         // approval, so keep the sheet open to make a mis-tap visible.
-        let dismissAfter = role == store.myRole || family.partnerHasJoined == false
+        let dismissAfter = role == ctx?.myRole || family.partnerHasJoined == false
         return Button {
             if isDirect {
                 act {
@@ -284,7 +290,7 @@ struct DayDetailSheet: View {
 
     private var proposeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let target = proposeTarget, let family = store.family {
+            if let target = proposeTarget, let family = ctx?.family {
                 Text("Propose: this day goes to \(family.name(of: target))")
                     .font(.subheadline.weight(.semibold))
 
@@ -308,7 +314,7 @@ struct DayDetailSheet: View {
                     if isWorking {
                         ProgressView().tint(.white)
                     } else {
-                        Text("Send to \(store.otherName) for approval")
+                        Text("Send to \(otherName) for approval")
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())

@@ -22,6 +22,29 @@ enum ParentRole: String, Codable, CaseIterable, Identifiable, Sendable {
     var other: ParentRole { self == .parentA ? .parentB : .parentA }
 }
 
+// MARK: - Family reference
+
+/// Identifies one co-parenting relationship: a dedicated CloudKit zone,
+/// shared between exactly two people. One person can belong to several
+/// families (kids/pets with different exes), each fully isolated.
+struct FamilyRef: Identifiable, Codable, Equatable, Hashable, Sendable {
+    /// My role inside THIS family (parent A owns the zone).
+    var role: ParentRole
+    var zoneName: String
+    /// CloudKit owner name of the zone; nil when I own it.
+    var zoneOwnerName: String?
+
+    var id: String { FamilyRef.makeID(zoneName: zoneName, ownerName: role == .parentA ? nil : zoneOwnerName) }
+
+    static func makeID(zoneName: String, ownerName: String?) -> String {
+        "\(ownerName ?? "own")#\(zoneName)"
+    }
+
+    static func newZoneName() -> String {
+        "FamilyZone-" + UUID().uuidString.prefix(8)
+    }
+}
+
 // MARK: - Family
 
 struct Family: Codable, Equatable, Sendable {
@@ -213,6 +236,9 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
 
     var id: String
     var memberID: String
+    /// Which family's zone this request lives in — derived from the zone it
+    /// was fetched from (never stored in the CloudKit record itself).
+    var familyID: String = ""
     var requester: ParentRole
     var changes: [DayChange]
     var message: String
@@ -223,8 +249,9 @@ struct ChangeRequest: Identifiable, Codable, Equatable, Sendable {
 
     var isPending: Bool { status == .pending }
 
-    init(memberID: String, requester: ParentRole, changes: [DayChange], message: String, kind: Kind = .manual) {
+    init(familyID: String, memberID: String, requester: ParentRole, changes: [DayChange], message: String, kind: Kind = .manual) {
         self.id = UUID().uuidString
+        self.familyID = familyID
         self.memberID = memberID
         self.requester = requester
         self.changes = changes.sorted { $0.dateKey < $1.dateKey }

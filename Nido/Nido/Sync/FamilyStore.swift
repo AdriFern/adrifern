@@ -3,9 +3,12 @@ import Foundation
 import Observation
 import UserNotifications
 
-/// Central app state: holds the family, its members (children & pets, each
-/// with an independent custody calendar), day assignments, notes and change
-/// requests, and coordinates every CloudKit operation.
+/// Central app state. One person can belong to SEVERAL families — each
+/// family is one co-parenting relationship (a different ex), fully isolated
+/// in its own CloudKit zone with its own members, days, notes and requests.
+/// All the user's children & pets appear together in one member list; every
+/// action resolves to the right family (and the right co-parent) through
+/// the member or request it concerns.
 @MainActor
 @Observable
 final class FamilyStore {
@@ -22,11 +25,29 @@ final class FamilyStore {
         var message: String
     }
 
+    /// Everything a view needs to act on one member's calendar.
+    struct MemberContext {
+        var member: Member
+        var familyID: String
+        var family: Family
+        var myRole: ParentRole
+        var partnerJoined: Bool
+
+        var otherRole: ParentRole { myRole.other }
+        var myName: String { family.name(of: myRole) }
+        var otherName: String { family.name(of: otherRole) }
+    }
+
     // MARK: - Observable state
 
     private(set) var phase: Phase = .loading
-    private(set) var family: Family?
-    private(set) var members: [Member] = []
+    private(set) var familyRefs: [FamilyRef] = []
+    /// familyID → parent profile (names + colors)
+    private(set) var families: [String: Family] = [:]
+    private(set) var membersByID: [String: Member] = [:]
+    /// memberID → familyID
+    private(set) var memberFamily: [String: String] = [:]
+    private(set) var memberOrder: [String] = []
     /// memberID → dateKey → owner
     private(set) var assignments: [String: [String: ParentRole]] = [:]
     /// memberID → dateKey → who set it directly (absent = locked/approved)
@@ -36,8 +57,8 @@ final class FamilyStore {
     private(set) var requests: [ChangeRequest] = []
     /// memberID → date keys inside pending requests
     private(set) var pendingDateKeys: [String: Set<String>] = [:]
-    private(set) var myRole: ParentRole = .parentA
-    private(set) var shareURL: URL?
+    /// familyID → invitation URL (owned families only)
+    private(set) var shareURLs: [String: URL] = [:]
     private(set) var isSyncing = false
     private(set) var lastSyncedAt: Date?
 
@@ -49,27 +70,58 @@ final class FamilyStore {
         }
     }
 
-    /// True while a joiner has accepted an invitation but hasn't entered
-    /// their name/color yet.
-    private(set) var joinNeedsProfile = false
+    /// Set while a joined family still needs my name/color.
+    private(set) var pendingJoinFamilyID: String?
     var isAcceptingInvite = false
 
     var alert: AppAlert?
 
     // MARK: - Derived state
 
-    var otherRole: ParentRole { myRole.other }
+    var members: [Member] { memberOrder.compactMap { membersByID[$0] } }
 
-    var myName: String { family?.name(of: myRole) ?? String(localized: "Me") }
-    var otherName: String { family?.name(of: otherRole) ?? String(localized: "Co-parent") }
+    var joinNeedsProfile: Bool { pendingJoinFamilyID != nil }
+
+    func member(_ id: String) -> Member? { membersByID[id] }
 
     var selectedMember: Member? {
-        members.first { $0.id == selectedMemberID } ?? members.first
+        if let selectedMemberID, let member = membersByID[selectedMemberID] { return member }
+        return members.first
     }
 
-    func member(_ id: String) -> Member? {
-        members.first { $0.id == id }
+    func family(_ familyID: String) -> Family? { families[familyID] }
+
+    func ref(_ familyID: String) -> FamilyRef? { familyRefs.first { $0.id == familyID } }
+
+    func myRole(in familyID: String) -> ParentRole { ref(familyID)?.role ?? .parentA }
+
+    func familyID(ofMember memberID: String) -> String? { memberFamily[memberID] }
+
+    func context(_ memberID: String) -> MemberContext? {
+        guard let member = membersByID[memberID],
+              let familyID = memberFamily[memberID],
+              let family = families[familyID]
+        else { return nil }
+        return MemberContext(
+            member: member,
+            familyID: familyID,
+            family: family,
+            myRole: myRole(in: familyID),
+            partnerJoined: family.partnerHasJoined
+        )
     }
+
+    /// Family the pending join belongs to (for the join-profile screen).
+    var pendingJoinFamily: Family? {
+        guard let pendingJoinFamilyID else { return nil }
+        return families[pendingJoinFamilyID]
+    }
+
+    func membersOf(_ familyID: String) -> [Member] {
+        members.filter { memberFamily[$0.id] == familyID }
+    }
+
+    func shareURL(for familyID: String) -> URL? { shareURLs[familyID] }
 
     func owner(of memberID: String, on dateKey: String) -> ParentRole? {
         assignments[memberID]?[dateKey]
@@ -84,85 +136,99 @@ final class FamilyStore {
     }
 
     var pendingIncoming: [ChangeRequest] {
-        requests.filter { $0.isPending && $0.requester != myRole }
+        requests.filter { $0.isPending && $0.requester != myRole(in: $0.familyID) }
     }
     var pendingOutgoing: [ChangeRequest] {
-        requests.filter { $0.isPending && $0.requester == myRole }
+        requests.filter { $0.isPending && $0.requester == myRole(in: $0.familyID) }
     }
     var resolvedRequests: [ChangeRequest] {
         requests.filter { !$0.isPending }.sorted { ($0.resolvedAt ?? $0.createdAt) > ($1.resolvedAt ?? $1.createdAt) }
     }
 
+    /// Names for a request's two sides, resolved through its family.
+    func requesterName(of request: ChangeRequest) -> String {
+        families[request.familyID]?.name(of: request.requester) ?? String(localized: "Co-parent")
+    }
+    func otherPartyName(of request: ChangeRequest) -> String {
+        families[request.familyID]?.name(of: myRole(in: request.familyID).other) ?? String(localized: "Co-parent")
+    }
+
     /// Whether a member's day can be set to `newOwner` (nil = cleared)
-    /// without the other parent's approval. Rules once both parents joined:
+    /// without that family's co-parent approval. Per family:
     /// - a day inside a pending request is never directly editable;
     /// - an unassigned day can be recorded freely by either parent;
-    /// - a day that was directly recorded for me stays mine to adjust
-    ///   (keep or clear), but handing it to the other parent needs approval;
+    /// - a day directly recorded for me stays mine to adjust (keep/clear),
+    ///   but handing it to the other parent needs approval;
     /// - days recorded for the other parent or agreed through a request
     ///   only change via approval.
-    /// While the co-parent hasn't joined, everything is freely editable.
+    /// While that family's co-parent hasn't joined, everything is editable.
     func canEditDirectly(_ memberID: String, _ dateKey: String, settingTo newOwner: ParentRole?) -> Bool {
+        guard let ctx = context(memberID) else { return false }
         guard !isPending(memberID, dateKey) else { return false }
-        if family?.partnerHasJoined == false { return true }
+        if !ctx.partnerJoined { return true }
         if owner(of: memberID, on: dateKey) == nil { return true }
-        guard directAssigner[memberID]?[dateKey] == myRole else { return false }
-        return newOwner != otherRole
+        guard directAssigner[memberID]?[dateKey] == ctx.myRole else { return false }
+        return newOwner != ctx.otherRole
     }
 
     // MARK: - Private
 
-    private var service: CloudKitService
-    private var setupComplete = false
-    private var hasZoneAccess = false
+    private var service = CloudKitService()
 
     private enum Keys {
-        static let role = "nido.role"
-        static let setupComplete = "nido.setupComplete"
-        static let zoneOwnerName = "nido.zoneOwnerName"
-        static let changeToken = "nido.changeToken"
-        static let shareURL = "nido.shareURL"
+        static let familyRefs = "nido.familyRefs"
         static let requestStatuses = "nido.requestStatuses"
-        static let joinNeedsProfile = "nido.joinNeedsProfile"
-        static let shareLocked = "nido.shareLocked"
         static let selectedMember = "nido.selectedMember"
+        static func changeToken(_ familyID: String) -> String { "nido.changeToken.\(familyID)" }
+        static func shareURL(_ familyID: String) -> String { "nido.shareURL.\(familyID)" }
+        static func shareLocked(_ familyID: String) -> String { "nido.shareLocked.\(familyID)" }
     }
 
     init() {
-        let defaults = UserDefaults.standard
-        let role = ParentRole(rawValue: defaults.string(forKey: Keys.role) ?? "A") ?? .parentA
-        service = CloudKitService(
-            isOwner: role == .parentA,
-            zoneOwnerName: defaults.string(forKey: Keys.zoneOwnerName)
-        )
-        myRole = role
-        selectedMemberID = defaults.string(forKey: Keys.selectedMember)
+        selectedMemberID = UserDefaults.standard.string(forKey: Keys.selectedMember)
+        familyRefs = Self.loadRefs()
+    }
+
+    private static func loadRefs() -> [FamilyRef] {
+        guard let data = UserDefaults.standard.data(forKey: Keys.familyRefs),
+              let refs = try? JSONDecoder().decode([FamilyRef].self, from: data)
+        else { return [] }
+        return refs
+    }
+
+    private func persistRefs() {
+        if let data = try? JSONEncoder().encode(familyRefs) {
+            UserDefaults.standard.set(data, forKey: Keys.familyRefs)
+        }
     }
 
     // MARK: - Bootstrap
 
     func bootstrap() async {
         guard phase == .loading else { return }
-        let defaults = UserDefaults.standard
-        setupComplete = defaults.bool(forKey: Keys.setupComplete)
-        joinNeedsProfile = defaults.bool(forKey: Keys.joinNeedsProfile)
-        if let urlString = defaults.string(forKey: Keys.shareURL) {
-            shareURL = URL(string: urlString)
-        }
-
-        if setupComplete {
-            hasZoneAccess = true
-            loadCache()
-            phase = .ready
-            await refresh(silent: true)
-        } else if joinNeedsProfile {
-            hasZoneAccess = true
-            loadCache()
+        if familyRefs.isEmpty {
             phase = .onboarding
-            await refresh(silent: true)
+            return
+        }
+        loadCache()
+        // A family whose profile step never finished resumes the join flow.
+        if let incomplete = familyRefs.first(where: { !isProfileComplete($0) }), familyRefs.count == 1 {
+            pendingJoinFamilyID = incomplete.id
+            phase = .onboarding
         } else {
-            phase = .onboarding
+            if let incomplete = familyRefs.first(where: { !isProfileComplete($0) }) {
+                pendingJoinFamilyID = incomplete.id
+            }
+            phase = .ready
         }
+        await refresh(silent: true)
+    }
+
+    /// My side of the profile is filled in for this family.
+    private func isProfileComplete(_ ref: FamilyRef) -> Bool {
+        guard let family = families[ref.id] else { return ref.role == .parentA }
+        let mine = ref.role == .parentA ? family.nameA : family.nameB
+        return !mine.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     func checkAccountStatus() async -> Bool {
@@ -180,49 +246,49 @@ final class FamilyStore {
         }
     }
 
-    // MARK: - Create family (parent A)
+    // MARK: - Create a family (works for the first one and for additional exes)
 
-    func createFamily(myName: String, firstMemberName: String, firstMemberKind: Member.Kind, colorHex: String) async -> Bool {
-        guard await checkAccountStatus() else { return false }
+    @discardableResult
+    func createFamily(myName: String, firstMemberName: String, firstMemberKind: Member.Kind, colorHex: String) async -> String? {
+        guard await checkAccountStatus() else { return nil }
         do {
-            service.configure(isOwner: true, zoneOwnerName: nil)
+            let zoneName = FamilyRef.newZoneName()
+            let ref = FamilyRef(role: .parentA, zoneName: zoneName, zoneOwnerName: nil)
+            let handle = service.handle(for: ref)
+
             let shareTitle = String(localized: "Custody calendar for \(firstMemberName)")
-            let url = try await service.createZoneAndShare(title: shareTitle)
+            let url = try await service.createZoneAndShare(zoneName: zoneName, title: shareTitle)
 
-            // If a family record already exists on this account (reinstall),
-            // resume it instead of overwriting the other parent's data.
-            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
-            if let existing = Family(record: record), !existing.nameA.isEmpty {
-                family = existing
-            } else {
-                var newFamily = Family(nameA: myName, colorA: colorHex)
-                if colorHex == newFamily.colorB {
-                    newFamily.colorB = Palette.options.first { $0 != colorHex } ?? Palette.defaultB
-                }
-                newFamily.apply(to: record)
-
-                let firstMember = Member(name: firstMemberName, kind: firstMemberKind, sortOrder: 0)
-                let memberRecord = service.newRecord(type: RecordType.member, name: firstMember.id)
-                firstMember.apply(to: memberRecord)
-
-                try await service.save(records: [record, memberRecord])
-                family = newFamily
-                members = [firstMember]
-                selectedMemberID = firstMember.id
+            var newFamily = Family(nameA: myName, colorA: colorHex)
+            if colorHex == newFamily.colorB {
+                newFamily.colorB = Palette.options.first { $0 != colorHex } ?? Palette.defaultB
             }
+            let familyRecord = service.newRecord(type: RecordType.family, name: Family.recordName, in: handle)
+            newFamily.apply(to: familyRecord)
 
-            shareURL = url
-            myRole = .parentA
-            markSetupComplete(role: .parentA, zoneOwnerName: nil)
-            UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
+            let firstMember = Member(name: firstMemberName, kind: firstMemberKind, sortOrder: 0)
+            let memberRecord = service.newRecord(type: RecordType.member, name: firstMember.id, in: handle)
+            firstMember.apply(to: memberRecord)
+
+            try await service.save(records: [familyRecord, memberRecord], in: handle)
+
+            familyRefs.append(ref)
+            persistRefs()
+            families[ref.id] = newFamily
+            membersByID[firstMember.id] = firstMember
+            memberFamily[firstMember.id] = ref.id
+            rebuildDerived()
+            selectedMemberID = firstMember.id
+            shareURLs[ref.id] = url
+            UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL(ref.id))
 
             await finishSetupSideEffects()
             saveCache()
             Task { await refresh(silent: true) }
-            return true
+            return ref.id
         } catch {
             presentError(error)
-            return false
+            return nil
         }
     }
 
@@ -231,116 +297,103 @@ final class FamilyStore {
         phase = .ready
     }
 
-    /// Recovers an existing calendar after a reinstall or new phone:
-    /// first looks for an owned calendar, then for one shared with us.
+    /// Recovers every existing calendar after a reinstall or new phone:
+    /// owned zones and zones shared with us.
     func reconnectExistingCalendar() async -> Bool {
         guard await checkAccountStatus() else { return false }
         isAcceptingInvite = true
         defer { isAcceptingInvite = false }
-        UserDefaults.standard.removeObject(forKey: Keys.changeToken)
 
-        // Owner path: a family record in my private database.
-        service.configure(isOwner: true, zoneOwnerName: nil)
+        let owned: [CKRecordZone]
+        let shared: [CKRecordZone]
         do {
-            let record = try await service.database.record(for: service.recordID(forName: Family.recordName))
-            if let existing = Family(record: record) {
-                family = existing
-                myRole = .parentA
-                markSetupComplete(role: .parentA, zoneOwnerName: nil)
-                if let share = try? await service.fetchShare(), let url = share.url {
-                    shareURL = url
-                    UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
-                }
-                await finishSetupSideEffects()
-                phase = .ready
-                await refresh(silent: true)
-                saveCache()
-                return true
-            }
-        } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
-            // No owned calendar — fall through to the participant path.
+            (owned, shared) = try await service.listFamilyZones()
         } catch {
-            // A transient failure must not read as "nothing to restore".
             presentError(error)
             return false
         }
 
-        // Participant path: a family zone shared with me.
-        do {
-            let zones = try await service.container.sharedCloudDatabase.allRecordZones()
-            if let zone = zones.first(where: { $0.zoneID.zoneName == CloudKitService.zoneName }) {
-                service.configure(isOwner: false, zoneOwnerName: zone.zoneID.ownerName)
-                myRole = .parentB
-                hasZoneAccess = true
-                let defaults = UserDefaults.standard
-                defaults.set(ParentRole.parentB.rawValue, forKey: Keys.role)
-                defaults.set(zone.zoneID.ownerName, forKey: Keys.zoneOwnerName)
-                let synced = await refresh(silent: true)
-                if !synced && family == nil {
-                    // The zone exists but couldn't be synced — a transient
-                    // failure must not read as "nothing to restore".
-                    defaults.removeObject(forKey: Keys.role)
-                    defaults.removeObject(forKey: Keys.zoneOwnerName)
-                    myRole = .parentA
-                    service.configure(isOwner: true, zoneOwnerName: nil)
-                    hasZoneAccess = false
-                    alert = AppAlert(
-                        title: String(localized: "Couldn't reach iCloud"),
-                        message: String(localized: "Your calendar was found but couldn't be loaded. Please check your connection and try again.")
-                    )
-                    return false
-                }
-                if family != nil {
-                    if family?.partnerHasJoined == true {
-                        markSetupComplete(role: .parentB, zoneOwnerName: zone.zoneID.ownerName)
-                        phase = .ready
-                    } else {
-                        joinNeedsProfile = true
-                        defaults.set(true, forKey: Keys.joinNeedsProfile)
-                    }
-                    await finishSetupSideEffects()
-                    saveCache()
-                    return true
-                }
-                // Zone found but nothing synced: undo the partial setup.
-                defaults.removeObject(forKey: Keys.role)
-                defaults.removeObject(forKey: Keys.zoneOwnerName)
-                myRole = .parentA
-            }
-        } catch {
-            presentError(error)
-            service.configure(isOwner: true, zoneOwnerName: nil)
-            hasZoneAccess = false
+        var restored: [FamilyRef] = []
+        for zone in owned {
+            restored.append(FamilyRef(role: .parentA, zoneName: zone.zoneID.zoneName, zoneOwnerName: nil))
+        }
+        for zone in shared {
+            restored.append(FamilyRef(role: .parentB, zoneName: zone.zoneID.zoneName, zoneOwnerName: zone.zoneID.ownerName))
+        }
+        guard !restored.isEmpty else {
+            alert = AppAlert(
+                title: String(localized: "Nothing to restore"),
+                message: String(localized: "No calendar was found on this iCloud account. You can create a new one or join with an invitation.")
+            )
             return false
         }
 
-        service.configure(isOwner: true, zoneOwnerName: nil)
-        hasZoneAccess = false
-        alert = AppAlert(
-            title: String(localized: "Nothing to restore"),
-            message: String(localized: "No calendar was found on this iCloud account. You can create a new one or join with an invitation.")
-        )
-        return false
+        for ref in restored where self.ref(ref.id) == nil {
+            familyRefs.append(ref)
+            UserDefaults.standard.removeObject(forKey: Keys.changeToken(ref.id))
+        }
+        persistRefs()
+
+        let synced = await refresh(silent: true)
+        if !synced && families.isEmpty {
+            // Zones exist but couldn't be loaded — a transient failure must
+            // not read as "nothing to restore".
+            familyRefs.removeAll { candidate in restored.contains { $0.id == candidate.id } && families[candidate.id] == nil }
+            persistRefs()
+            alert = AppAlert(
+                title: String(localized: "Couldn't reach iCloud"),
+                message: String(localized: "Your calendar was found but couldn't be loaded. Please check your connection and try again.")
+            )
+            return false
+        }
+
+        for ref in familyRefs where ref.role == .parentA {
+            if let share = try? await service.fetchShare(in: service.handle(for: ref)), let url = share.url {
+                shareURLs[ref.id] = url
+                UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL(ref.id))
+            }
+        }
+
+        await finishSetupSideEffects()
+        if let incomplete = familyRefs.first(where: { !isProfileComplete($0) }) {
+            pendingJoinFamilyID = incomplete.id
+            phase = familyRefs.count == 1 ? .onboarding : .ready
+        } else {
+            phase = .ready
+        }
+        saveCache()
+        return true
     }
 
-    // MARK: - Join family (parent B)
+    // MARK: - Join a family (invited side)
 
     /// Called when iOS hands us an accepted CloudKit share, or after we
-    /// accept one manually from a pasted/scanned invitation link.
+    /// accept one manually from a pasted/scanned invitation link. Adds a
+    /// NEW family — existing families are untouched, so custody with a
+    /// different ex can live side by side.
     func handleIncomingShare(_ metadata: CKShare.Metadata) async {
-        if setupComplete {
-            alert = AppAlert(
-                title: String(localized: "Already connected"),
-                message: String(localized: "This device is already part of a family calendar. To join a different one, first leave the current calendar in Settings.")
-            )
-            return
-        }
         guard await checkAccountStatus() else { return }
         isAcceptingInvite = true
         defer { isAcceptingInvite = false }
 
-        // One co-parent only: refuse if someone else already accepted this
-        // invitation (rejoins by the same iCloud account are always allowed).
+        let zoneID = metadata.share.recordID.zoneID
+        let incomingRef = FamilyRef(role: .parentB, zoneName: zoneID.zoneName, zoneOwnerName: zoneID.ownerName)
+
+        // Tapping an invitation for a family we're already part of is just
+        // a rejoin of that one family.
+        if let existing = ref(incomingRef.id) {
+            await refresh(silent: true)
+            if isProfileComplete(existing) {
+                phase = .ready
+            } else {
+                pendingJoinFamilyID = existing.id
+                if familyRefs.count == 1 { phase = .onboarding }
+            }
+            return
+        }
+
+        // One co-parent per family: refuse if someone else already accepted
+        // this invitation (rejoins by this iCloud account are allowed).
         let isRejoin = metadata.participantStatus == .accepted
         if !isRejoin {
             let someoneElseJoined = metadata.share.participants.contains {
@@ -352,58 +405,62 @@ final class FamilyStore {
             }
         }
 
-        let ownerName = metadata.share.recordID.zoneID.ownerName
         do {
             try await service.acceptShare(metadata: metadata)
         } catch {
-            // The share may already be accepted (e.g. tapping the link twice).
-            // If we can reach the zone anyway, carry on; otherwise surface it.
-            service.configure(isOwner: false, zoneOwnerName: ownerName)
-            hasZoneAccess = true
-            await refresh(silent: true)
-            if family == nil {
-                hasZoneAccess = false
+            // The share may already be accepted (e.g. tapping the link
+            // twice). If we can reach the zone anyway, carry on.
+            let probe = await probeFamily(incomingRef)
+            if !probe {
                 presentError(error)
                 return
             }
         }
 
-        service.configure(isOwner: false, zoneOwnerName: ownerName)
-        myRole = .parentB
-        hasZoneAccess = true
-
-        let defaults = UserDefaults.standard
-        defaults.set(ParentRole.parentB.rawValue, forKey: Keys.role)
-        defaults.set(ownerName, forKey: Keys.zoneOwnerName)
-        defaults.removeObject(forKey: Keys.changeToken)
-
+        familyRefs.append(incomingRef)
+        persistRefs()
+        UserDefaults.standard.removeObject(forKey: Keys.changeToken(incomingRef.id))
         await refresh(silent: true)
+
+        guard let joined = families[incomingRef.id] else {
+            // Couldn't load the new family — back out cleanly.
+            removeFamilyLocally(incomingRef.id)
+            alert = AppAlert(
+                title: String(localized: "Couldn't reach iCloud"),
+                message: String(localized: "Your calendar was found but couldn't be loaded. Please check your connection and try again.")
+            )
+            return
+        }
 
         // Second line of defense: the profile slot is already taken and this
         // iCloud account isn't the one that joined — leave the share again.
-        if !isRejoin, family?.partnerHasJoined == true {
-            try? await service.deleteZone()
-            resetLocalState()
+        if !isRejoin, joined.partnerHasJoined {
+            try? await service.deleteZone(in: service.handle(for: incomingRef))
+            removeFamilyLocally(incomingRef.id)
             alert = Self.invitationUsedAlert
             return
         }
 
-        // Rejoin from the same iCloud account with a completed profile
-        // (reinstall / new phone): everything is already set up, so go
-        // straight back to the calendar instead of re-running onboarding.
-        if isRejoin, family?.partnerHasJoined == true {
-            markSetupComplete(role: .parentB, zoneOwnerName: ownerName)
-            joinNeedsProfile = false
-            defaults.set(false, forKey: Keys.joinNeedsProfile)
-            await finishSetupSideEffects()
+        await finishSetupSideEffects()
+
+        // Rejoin with a completed profile (reinstall / new phone): straight
+        // back to the calendar.
+        if isRejoin, joined.partnerHasJoined {
             saveCache()
             phase = .ready
             return
         }
 
-        joinNeedsProfile = true
-        defaults.set(true, forKey: Keys.joinNeedsProfile)
-        phase = .onboarding
+        pendingJoinFamilyID = incomingRef.id
+        if phase != .ready { phase = .onboarding }
+        saveCache()
+    }
+
+    /// True if the family's zone is reachable (used to recover from
+    /// "already accepted" errors).
+    private func probeFamily(_ ref: FamilyRef) async -> Bool {
+        let handle = service.handle(for: ref)
+        return (try? await service.fetchZoneChanges(in: handle, since: nil)) != nil
     }
 
     private static var invitationUsedAlert: AppAlert {
@@ -426,32 +483,37 @@ final class FamilyStore {
         }
     }
 
-    /// Second step of joining: the new parent sets their name and color.
+    /// Second step of joining: the invited parent sets their name and color
+    /// for the family they just joined.
     func completeJoin(myName: String, colorHex: String) async -> Bool {
+        guard let familyID = pendingJoinFamilyID, let joinRef = ref(familyID) else { return false }
+        let handle = service.handle(for: joinRef)
         do {
-            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
+            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName, in: handle)
             // Last line of defense against two people racing one invitation:
             // if someone else completed the join first, back out.
             if let taken = record["nameB"] as? String,
                !taken.trimmingCharacters(in: .whitespaces).isEmpty {
-                try? await service.deleteZone()
-                resetLocalState()
+                try? await service.deleteZone(in: handle)
+                removeFamilyLocally(familyID)
+                pendingJoinFamilyID = nil
+                if familyRefs.isEmpty { phase = .onboarding }
                 alert = Self.invitationUsedAlert
                 return false
             }
             record["nameB"] = myName
             record["colorB"] = colorHex
-            try await service.save(records: [record])
+            try await service.save(records: [record], in: handle)
 
-            if var updated = family {
+            if var updated = families[familyID] {
                 updated.nameB = myName
                 updated.colorB = colorHex
-                family = updated
+                families[familyID] = updated
             }
-            markSetupComplete(role: .parentB, zoneOwnerName: service.zoneID.ownerName)
-            joinNeedsProfile = false
-            UserDefaults.standard.set(false, forKey: Keys.joinNeedsProfile)
-
+            pendingJoinFamilyID = nil
+            if selectedMember == nil || memberFamily[selectedMemberID ?? ""] == nil {
+                selectedMemberID = membersOf(familyID).first?.id ?? members.first?.id
+            }
             await finishSetupSideEffects()
             phase = .ready
             saveCache()
@@ -462,19 +524,13 @@ final class FamilyStore {
         }
     }
 
-    private func markSetupComplete(role: ParentRole, zoneOwnerName: String?) {
-        setupComplete = true
-        hasZoneAccess = true
-        let defaults = UserDefaults.standard
-        defaults.set(true, forKey: Keys.setupComplete)
-        defaults.set(role.rawValue, forKey: Keys.role)
-        if let zoneOwnerName {
-            defaults.set(zoneOwnerName, forKey: Keys.zoneOwnerName)
-        }
-    }
-
     private func finishSetupSideEffects() async {
-        try? await service.saveSubscriptions()
+        for ref in familyRefs where ref.role == .parentA {
+            try? await service.saveZoneSubscription(zoneName: ref.zoneName)
+        }
+        if familyRefs.contains(where: { $0.role == .parentB }) {
+            try? await service.saveSharedDatabaseSubscription()
+        }
         let center = UNUserNotificationCenter.current()
         _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
     }
@@ -482,16 +538,22 @@ final class FamilyStore {
     // MARK: - Members (children & pets)
 
     @discardableResult
-    func addMember(name: String, kind: Member.Kind) async -> Bool {
+    func addMember(familyID: String, name: String, kind: Member.Kind) async -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, members.count < Member.maxCount else { return false }
-        let member = Member(name: trimmed, kind: kind, sortOrder: (members.map(\.sortOrder).max() ?? -1) + 1)
+        guard !trimmed.isEmpty,
+              let familyRef = ref(familyID),
+              membersOf(familyID).count < Member.maxCount
+        else { return false }
+        let handle = service.handle(for: familyRef)
+        let maxOrder = membersOf(familyID).map(\.sortOrder).max() ?? -1
+        let member = Member(name: trimmed, kind: kind, sortOrder: maxOrder + 1)
         do {
-            let record = service.newRecord(type: RecordType.member, name: member.id)
+            let record = service.newRecord(type: RecordType.member, name: member.id, in: handle)
             member.apply(to: record)
-            try await service.save(records: [record])
-            members.append(member)
-            sortMembers()
+            try await service.save(records: [record], in: handle)
+            membersByID[member.id] = member
+            memberFamily[member.id] = familyID
+            rebuildDerived()
             if selectedMemberID == nil { selectedMemberID = member.id }
             saveCache()
             return true
@@ -504,16 +566,19 @@ final class FamilyStore {
     func renameMember(_ memberID: String, to name: String) async {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty,
-              let index = members.firstIndex(where: { $0.id == memberID }),
-              members[index].name != trimmed
+              var member = membersByID[memberID],
+              member.name != trimmed,
+              let familyID = memberFamily[memberID],
+              let familyRef = ref(familyID)
         else { return }
         do {
-            let record = service.newRecord(type: RecordType.member, name: memberID)
-            var updated = members[index]
-            updated.name = trimmed
-            updated.apply(to: record)
-            try await service.save(records: [record])
-            members[index] = updated
+            let handle = service.handle(for: familyRef)
+            let record = service.newRecord(type: RecordType.member, name: memberID, in: handle)
+            member.name = trimmed
+            member.apply(to: record)
+            try await service.save(records: [record], in: handle)
+            membersByID[memberID] = member
+            rebuildDerived()
             saveCache()
         } catch {
             presentError(error)
@@ -523,16 +588,18 @@ final class FamilyStore {
     /// Fixing a mis-tapped child/pet choice shouldn't require deleting the
     /// whole calendar — the kind is presentational (icon + wording).
     func setMemberKind(_ memberID: String, to kind: Member.Kind) async {
-        guard let index = members.firstIndex(where: { $0.id == memberID }),
-              members[index].kind != kind
+        guard var member = membersByID[memberID],
+              member.kind != kind,
+              let familyID = memberFamily[memberID],
+              let familyRef = ref(familyID)
         else { return }
         do {
-            let record = service.newRecord(type: RecordType.member, name: memberID)
-            var updated = members[index]
-            updated.kind = kind
-            updated.apply(to: record)
-            try await service.save(records: [record])
-            members[index] = updated
+            let handle = service.handle(for: familyRef)
+            let record = service.newRecord(type: RecordType.member, name: memberID, in: handle)
+            member.kind = kind
+            member.apply(to: record)
+            try await service.save(records: [record], in: handle)
+            membersByID[memberID] = member
             saveCache()
         } catch {
             presentError(error)
@@ -540,12 +607,16 @@ final class FamilyStore {
     }
 
     /// Removes a member and every record of theirs (days, notes) plus their
-    /// pending requests. The last member can't be deleted. The member record
-    /// and the request cancellations go in ONE atomic operation, so a crash
-    /// mid-way can never leave ghost pending requests behind; day/note
+    /// pending requests. A family's last member can't be deleted. The member
+    /// record and the request cancellations go in ONE atomic operation, so a
+    /// crash mid-way can never leave ghost pending requests; day/note
     /// deletions follow (orphans are also pruned defensively in `apply`).
     func deleteMember(_ memberID: String) async {
-        guard members.count > 1, members.contains(where: { $0.id == memberID }) else { return }
+        guard let familyID = memberFamily[memberID],
+              let familyRef = ref(familyID),
+              membersOf(familyID).count > 1
+        else { return }
+        let handle = service.handle(for: familyRef)
         do {
             var cancelled: [ChangeRequest] = []
             var cancelRecords: [CKRecord] = []
@@ -553,26 +624,27 @@ final class FamilyStore {
                 var resolved = request
                 resolved.status = .cancelled
                 resolved.resolvedAt = Date()
-                let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
+                let record = service.newRecord(type: RecordType.changeRequest, name: request.id, in: handle)
                 resolved.apply(to: record)
                 cancelRecords.append(record)
                 cancelled.append(resolved)
             }
 
-            try await service.save(records: cancelRecords, deleting: [service.recordID(forName: memberID)])
+            try await service.save(records: cancelRecords, deleting: [service.recordID(forName: memberID, in: handle)], in: handle)
 
             var dayNoteIDs: [CKRecord.ID] = []
             for dateKey in (assignments[memberID] ?? [:]).keys {
-                dayNoteIDs.append(service.recordID(forName: DayAssignment.recordName(member: memberID, dateKey: dateKey)))
+                dayNoteIDs.append(service.recordID(forName: DayAssignment.recordName(member: memberID, dateKey: dateKey), in: handle))
             }
             for dateKey in (notes[memberID] ?? [:]).keys {
-                dayNoteIDs.append(service.recordID(forName: DayNote.recordName(member: memberID, dateKey: dateKey)))
+                dayNoteIDs.append(service.recordID(forName: DayNote.recordName(member: memberID, dateKey: dateKey), in: handle))
             }
             for chunk in dayNoteIDs.chunked(into: 200) {
-                try await service.save(records: [], deleting: chunk)
+                try await service.save(records: [], deleting: chunk, in: handle)
             }
 
-            members.removeAll { $0.id == memberID }
+            membersByID.removeValue(forKey: memberID)
+            memberFamily.removeValue(forKey: memberID)
             assignments.removeValue(forKey: memberID)
             directAssigner.removeValue(forKey: memberID)
             notes.removeValue(forKey: memberID)
@@ -580,7 +652,7 @@ final class FamilyStore {
                 upsert(request)
                 rememberRequestStatus(request)
             }
-            rebuildPendingDateKeys()
+            rebuildDerived()
             if selectedMemberID == memberID { selectedMemberID = members.first?.id }
             saveCache()
         } catch {
@@ -588,85 +660,104 @@ final class FamilyStore {
         }
     }
 
-    private func sortMembers() {
-        members.sort { ($0.sortOrder, $0.name) < ($1.sortOrder, $1.name) }
-    }
-
     // MARK: - Refresh
 
     @discardableResult
     func refresh(silent: Bool = false) async -> Bool {
-        guard hasZoneAccess, !isSyncing else { return false }
+        guard !familyRefs.isEmpty, !isSyncing else { return false }
         isSyncing = true
         defer { isSyncing = false }
 
+        let previousStatuses = storedRequestStatuses()
+        var outcomes: [(familyID: String, outcome: ApplyOutcome)] = []
+        var partnerWasJoined: [String: Bool] = [:]
+        var anyInitialSync = false
+        var allOK = true
+
+        for familyRef in familyRefs {
+            partnerWasJoined[familyRef.id] = families[familyRef.id]?.partnerHasJoined == true
+            let result = await refreshFamily(familyRef, silent: silent)
+            switch result {
+            case .success(let outcome, let wasInitial):
+                outcomes.append((familyRef.id, outcome))
+                if wasInitial { anyInitialSync = true }
+            case .gone:
+                allOK = false
+            case .failed:
+                allOK = false
+            }
+        }
+
+        lastSyncedAt = Date()
+        rebuildDerived()
+        saveCache()
+        if anyInitialSync && previousStatuses.isEmpty {
+            // First sync on this device: record state without a
+            // notification storm for pre-existing requests.
+            recordAllRequestStatuses()
+        } else {
+            notifyAboutChanges(
+                previousStatuses: previousStatuses,
+                outcomes: outcomes,
+                partnerWasJoined: partnerWasJoined
+            )
+        }
+        await lockSharesIfNeeded()
+        return allOK
+    }
+
+    private enum FamilyRefreshResult {
+        case success(ApplyOutcome, wasInitialSync: Bool)
+        case gone
+        case failed
+    }
+
+    private func refreshFamily(_ familyRef: FamilyRef, silent: Bool) async -> FamilyRefreshResult {
+        let handle = service.handle(for: familyRef)
         var retriedAfterTokenReset = false
         while true {
-            let isInitialSync = changeToken == nil
+            let token = changeToken(for: familyRef.id)
+            let isInitialSync = token == nil
             do {
-                let changes = try await service.fetchZoneChanges(since: changeToken)
-                let previousStatuses = storedRequestStatuses()
-                let partnerWasJoined = family?.partnerHasJoined == true
-                let outcome = apply(changes)
-                if let token = changes.changeToken {
-                    changeToken = token
+                let changes = try await service.fetchZoneChanges(in: handle, since: token)
+                let outcome = apply(changes, familyID: familyRef.id)
+                if let newToken = changes.changeToken {
+                    setChangeToken(newToken, for: familyRef.id)
                 }
-                lastSyncedAt = Date()
-                saveCache()
-                if isInitialSync {
-                    // First sync on this device: record state without a
-                    // notification storm for pre-existing requests.
-                    recordAllRequestStatuses()
-                } else {
-                    notifyAboutChanges(
-                        previousStatuses: previousStatuses,
-                        outcome: outcome,
-                        partnerWasJoined: partnerWasJoined
-                    )
-                }
-                await lockShareIfNeeded()
-                return true
+                return .success(outcome, wasInitialSync: isInitialSync)
             } catch {
                 let code = Self.normalizedCKErrorCode(error)
                 if code == .changeTokenExpired, !retriedAfterTokenReset {
                     retriedAfterTokenReset = true
-                    changeToken = nil
-                    members = []
-                    assignments = [:]
-                    directAssigner = [:]
-                    notes = [:]
-                    requests = []
-                    rebuildPendingDateKeys()
+                    setChangeToken(nil, for: familyRef.id)
+                    clearFamilyData(familyRef.id)
                     continue
                 }
                 if code == .zoneNotFound || code == .userDeletedZone {
-                    handleZoneGone()
-                    return false
-                }
-                if retriedAfterTokenReset {
-                    // The full refetch after a token reset failed; restore the
-                    // cached data so the UI doesn't sit empty until next sync.
-                    loadCache()
+                    handleFamilyGone(familyRef)
+                    return .gone
                 }
                 if !silent { presentError(error) }
-                return false
+                return .failed
             }
         }
     }
 
-    /// Once the co-parent has joined, kill the public invitation link at the
-    /// platform level so it can't be used by anyone else. Runs once (owner only).
-    private func lockShareIfNeeded() async {
-        guard myRole == .parentA,
-              family?.partnerHasJoined == true,
-              !UserDefaults.standard.bool(forKey: Keys.shareLocked)
-        else { return }
-        guard let share = try? await service.fetchShare() else { return }
-        if share.publicPermission != .none {
-            share.publicPermission = .none
-            guard (try? await service.save(records: [share])) != nil else { return }
+    /// Once a family's co-parent has joined, kill that invitation link at
+    /// the platform level so nobody else can use it. Owner side, once each.
+    private func lockSharesIfNeeded() async {
+        for familyRef in familyRefs where familyRef.role == .parentA {
+            guard families[familyRef.id]?.partnerHasJoined == true,
+                  !UserDefaults.standard.bool(forKey: Keys.shareLocked(familyRef.id))
+            else { continue }
+            let handle = service.handle(for: familyRef)
+            guard let share = try? await service.fetchShare(in: handle) else { continue }
+            if share.publicPermission != .none {
+                share.publicPermission = .none
+                guard (try? await service.save(records: [share], in: handle)) != nil else { continue }
+            }
+            UserDefaults.standard.set(true, forKey: Keys.shareLocked(familyRef.id))
         }
-        UserDefaults.standard.set(true, forKey: Keys.shareLocked)
     }
 
     /// Zone-level CloudKit errors sometimes arrive wrapped in a partialFailure.
@@ -686,27 +777,26 @@ final class FamilyStore {
         var addedMemberNames: [String] = []
     }
 
-    private func apply(_ changes: CloudKitService.ZoneChanges) -> ApplyOutcome {
+    private func apply(_ changes: CloudKitService.ZoneChanges, familyID: String) -> ApplyOutcome {
         var outcome = ApplyOutcome()
         for record in changes.changedRecords {
             if let share = record as? CKShare {
-                if myRole == .parentA, let url = share.url {
-                    shareURL = url
-                    UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
+                if myRole(in: familyID) == .parentA, let url = share.url {
+                    shareURLs[familyID] = url
+                    UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL(familyID))
                 }
                 continue
             }
             switch record.recordType {
             case RecordType.family:
-                if let value = Family(record: record) { family = value }
+                if let value = Family(record: record) { families[familyID] = value }
             case RecordType.member:
                 if let value = Member(record: record) {
-                    if let index = members.firstIndex(where: { $0.id == value.id }) {
-                        members[index] = value
-                    } else {
-                        members.append(value)
+                    if membersByID[value.id] == nil {
                         outcome.addedMemberNames.append(value.name)
                     }
+                    membersByID[value.id] = value
+                    memberFamily[value.id] = familyID
                 }
             case RecordType.dayAssignment:
                 if let value = DayAssignment(record: record) {
@@ -717,7 +807,10 @@ final class FamilyStore {
                     directAssigner[value.memberID, default: [:]][value.dateKey] = value.assignedBy
                 }
             case RecordType.changeRequest:
-                if let value = ChangeRequest(record: record) { upsert(value) }
+                if var value = ChangeRequest(record: record) {
+                    value.familyID = familyID
+                    upsert(value)
+                }
             case RecordType.dayNote:
                 if let value = DayNote(record: record) {
                     notes[value.memberID, default: [:]][value.dateKey] = value.text
@@ -733,17 +826,17 @@ final class FamilyStore {
                 // A removed member must never look like ordinary day edits:
                 // capture the loss for its own loud notification and scrub
                 // their day-change entries.
-                if let existing = members.first(where: { $0.id == name }) {
+                if let existing = membersByID[name] {
                     outcome.deletedMembers.append((existing.name, assignments[name]?.count ?? 0))
                 }
-                members.removeAll { $0.id == name }
+                membersByID.removeValue(forKey: name)
+                memberFamily.removeValue(forKey: name)
                 assignments.removeValue(forKey: name)
                 directAssigner.removeValue(forKey: name)
                 notes.removeValue(forKey: name)
                 outcome.changedDays = outcome.changedDays.filter { !$0.hasPrefix(name + "|") }
                 // Their pending requests are doomed (cancellation records
-                // are on the way); reflect that immediately so no ghost
-                // badge lingers.
+                // are on the way); reflect that immediately.
                 for index in requests.indices
                 where requests[index].memberID == name && requests[index].isPending {
                     requests[index].status = .cancelled
@@ -770,42 +863,96 @@ final class FamilyStore {
         // Defensive orphan pruning: day/note records whose member no longer
         // exists (e.g. a deletion that crashed halfway on the other device)
         // must not haunt the caches.
-        if !members.isEmpty {
-            let ids = Set(members.map(\.id))
+        if !membersByID.isEmpty {
+            let ids = Set(membersByID.keys)
             assignments = assignments.filter { ids.contains($0.key) }
             directAssigner = directAssigner.filter { ids.contains($0.key) }
             notes = notes.filter { ids.contains($0.key) }
         }
-        sortMembers()
-        if selectedMember == nil { selectedMemberID = members.first?.id }
-        requests.sort { $0.createdAt > $1.createdAt }
-        rebuildPendingDateKeys()
         return outcome
     }
 
-    private func upsert(_ request: ChangeRequest) {
-        if let index = requests.firstIndex(where: { $0.id == request.id }) {
-            requests[index] = request
-        } else {
-            requests.append(request)
+    /// Rebuilds display order (family order, then member sort order) and
+    /// pending-day sets; heals a stale member selection.
+    private func rebuildDerived() {
+        var order: [String] = []
+        for familyRef in familyRefs {
+            let familyMembers = membersByID.values
+                .filter { memberFamily[$0.id] == familyRef.id }
+                .sorted { ($0.sortOrder, $0.name) < ($1.sortOrder, $1.name) }
+            order.append(contentsOf: familyMembers.map(\.id))
         }
-        rebuildPendingDateKeys()
-    }
-
-    private func rebuildPendingDateKeys() {
+        memberOrder = order
+        requests.sort { $0.createdAt > $1.createdAt }
         var keys: [String: Set<String>] = [:]
         for request in requests where request.isPending {
             keys[request.memberID, default: []].formUnion(request.changes.map(\.dateKey))
         }
         pendingDateKeys = keys
+        if selectedMemberID == nil || membersByID[selectedMemberID ?? ""] == nil {
+            selectedMemberID = memberOrder.first
+        }
     }
 
-    private func handleZoneGone() {
-        resetLocalState()
+    private func upsert(_ request: ChangeRequest) {
+        if let index = requests.firstIndex(where: { $0.id == request.id }) {
+            var merged = request
+            if merged.familyID.isEmpty { merged.familyID = requests[index].familyID }
+            requests[index] = merged
+        } else {
+            requests.append(request)
+        }
+    }
+
+    /// A family's zone disappeared (deleted, or our access was revoked):
+    /// drop just that family; the others keep working.
+    private func handleFamilyGone(_ familyRef: FamilyRef) {
+        let name = families[familyRef.id]?.name(of: familyRef.role.other) ?? String(localized: "Co-parent")
+        removeFamilyLocally(familyRef.id)
         alert = AppAlert(
             title: String(localized: "Calendar unavailable"),
-            message: String(localized: "The shared calendar was deleted or your access was removed. You can create a new one or join another invitation.")
+            message: String(localized: "The calendar you share with \(name) was deleted or your access was removed.")
         )
+    }
+
+    private func removeFamilyLocally(_ familyID: String) {
+        familyRefs.removeAll { $0.id == familyID }
+        persistRefs()
+        families.removeValue(forKey: familyID)
+        let gone = memberFamily.filter { $0.value == familyID }.map(\.key)
+        for memberID in gone {
+            membersByID.removeValue(forKey: memberID)
+            memberFamily.removeValue(forKey: memberID)
+            assignments.removeValue(forKey: memberID)
+            directAssigner.removeValue(forKey: memberID)
+            notes.removeValue(forKey: memberID)
+        }
+        requests.removeAll { $0.familyID == familyID }
+        shareURLs.removeValue(forKey: familyID)
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: Keys.changeToken(familyID))
+        defaults.removeObject(forKey: Keys.shareURL(familyID))
+        defaults.removeObject(forKey: Keys.shareLocked(familyID))
+        if pendingJoinFamilyID == familyID { pendingJoinFamilyID = nil }
+        rebuildDerived()
+        saveCache()
+        if familyRefs.isEmpty {
+            phase = .onboarding
+        }
+    }
+
+    private func clearFamilyData(_ familyID: String) {
+        families.removeValue(forKey: familyID)
+        let gone = memberFamily.filter { $0.value == familyID }.map(\.key)
+        for memberID in gone {
+            membersByID.removeValue(forKey: memberID)
+            memberFamily.removeValue(forKey: memberID)
+            assignments.removeValue(forKey: memberID)
+            directAssigner.removeValue(forKey: memberID)
+            notes.removeValue(forKey: memberID)
+        }
+        requests.removeAll { $0.familyID == familyID }
+        rebuildDerived()
     }
 
     // MARK: - Day actions
@@ -814,7 +961,11 @@ final class FamilyStore {
     /// `canEditDirectly`). Editability follows the day: a direct assignment
     /// is stamped with the *receiving* parent.
     func setDayDirectly(_ memberID: String, _ dateKey: String, to newOwner: ParentRole?) async {
-        guard canEditDirectly(memberID, dateKey, settingTo: newOwner) else { return }
+        guard canEditDirectly(memberID, dateKey, settingTo: newOwner),
+              let familyID = memberFamily[memberID],
+              let familyRef = ref(familyID)
+        else { return }
+        let handle = service.handle(for: familyRef)
         let previousOwner = owner(of: memberID, on: dateKey)
         let previousAssigner = directAssigner[memberID]?[dateKey]
         guard previousOwner != newOwner else { return }
@@ -829,11 +980,11 @@ final class FamilyStore {
         do {
             let recordName = DayAssignment.recordName(member: memberID, dateKey: dateKey)
             if let newOwner {
-                let record = service.newRecord(type: RecordType.dayAssignment, name: recordName)
+                let record = service.newRecord(type: RecordType.dayAssignment, name: recordName, in: handle)
                 DayAssignment(memberID: memberID, dateKey: dateKey, owner: newOwner, assignedBy: newOwner).apply(to: record)
-                try await service.save(records: [record])
+                try await service.save(records: [record], in: handle)
             } else {
-                try await service.save(records: [], deleting: [service.recordID(forName: recordName)])
+                try await service.save(records: [], deleting: [service.recordID(forName: recordName, in: handle)], in: handle)
             }
             saveCache()
         } catch {
@@ -849,6 +1000,8 @@ final class FamilyStore {
     }
 
     func setNote(_ text: String, member memberID: String, on dateKey: String) async {
+        guard let familyID = memberFamily[memberID], let familyRef = ref(familyID) else { return }
+        let handle = service.handle(for: familyRef)
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let previous = note(of: memberID, on: dateKey)
         do {
@@ -856,13 +1009,13 @@ final class FamilyStore {
             if trimmed.isEmpty {
                 guard previous != nil else { return }
                 notes[memberID]?.removeValue(forKey: dateKey)
-                try await service.save(records: [], deleting: [service.recordID(forName: recordName)])
+                try await service.save(records: [], deleting: [service.recordID(forName: recordName, in: handle)], in: handle)
             } else {
                 guard trimmed != previous else { return }
                 notes[memberID, default: [:]][dateKey] = trimmed
-                let record = service.newRecord(type: RecordType.dayNote, name: recordName)
+                let record = service.newRecord(type: RecordType.dayNote, name: recordName, in: handle)
                 DayNote(memberID: memberID, dateKey: dateKey, text: trimmed).apply(to: record)
-                try await service.save(records: [record])
+                try await service.save(records: [record], in: handle)
             }
             saveCache()
         } catch {
@@ -878,20 +1031,25 @@ final class FamilyStore {
     // MARK: - Change requests
 
     func submitRequest(member memberID: String, changes: [DayChange], message: String, kind: ChangeRequest.Kind = .manual) async -> Bool {
-        guard !changes.isEmpty else { return false }
+        guard !changes.isEmpty,
+              let familyID = memberFamily[memberID],
+              let familyRef = ref(familyID)
+        else { return false }
+        let handle = service.handle(for: familyRef)
         let request = ChangeRequest(
+            familyID: familyID,
             memberID: memberID,
-            requester: myRole,
+            requester: familyRef.role,
             changes: changes,
             message: message.trimmingCharacters(in: .whitespacesAndNewlines),
             kind: kind
         )
         do {
-            let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
+            let record = service.newRecord(type: RecordType.changeRequest, name: request.id, in: handle)
             request.apply(to: record)
-            try await service.save(records: [record])
+            try await service.save(records: [record], in: handle)
             upsert(request)
-            requests.sort { $0.createdAt > $1.createdAt }
+            rebuildDerived()
             rememberRequestStatus(request)
             saveCache()
             return true
@@ -902,16 +1060,21 @@ final class FamilyStore {
     }
 
     func approve(_ request: ChangeRequest) async {
-        guard request.isPending, request.requester != myRole else { return }
+        guard request.isPending,
+              let familyRef = ref(request.familyID),
+              request.requester != familyRef.role
+        else { return }
+        let handle = service.handle(for: familyRef)
         // Sync first so the stale-day validation below runs against the
         // freshest state we can get, not a lagging local cache.
         await refresh(silent: true)
         do {
             // Guard against the cancel-vs-approve race: confirm the request
             // is still pending on the server before applying anything.
-            let serverRecord = try await service.database.record(for: service.recordID(forName: request.id))
-            guard let serverRequest = ChangeRequest(record: serverRecord), serverRequest.isPending else {
-                if let serverRequest = ChangeRequest(record: serverRecord) {
+            let serverRecord = try await handle.database.record(for: service.recordID(forName: request.id, in: handle))
+            guard var serverRequest = ChangeRequest(record: serverRecord), serverRequest.isPending else {
+                if var serverRequest = ChangeRequest(record: serverRecord) {
+                    serverRequest.familyID = request.familyID
                     upsert(serverRequest)
                     rememberRequestStatus(serverRequest)
                 }
@@ -921,6 +1084,7 @@ final class FamilyStore {
                 )
                 return
             }
+            serverRequest.familyID = request.familyID
             let memberID = serverRequest.memberID
 
             // A request for a member that no longer exists must not be
@@ -950,25 +1114,25 @@ final class FamilyStore {
             var dayRecords: [CKRecord] = []
             for change in validChanges {
                 let recordName = DayAssignment.recordName(member: memberID, dateKey: change.dateKey)
-                let record = service.newRecord(type: RecordType.dayAssignment, name: recordName)
+                let record = service.newRecord(type: RecordType.dayAssignment, name: recordName, in: handle)
                 DayAssignment(memberID: memberID, dateKey: change.dateKey, owner: change.newOwner, assignedBy: nil).apply(to: record)
                 dayRecords.append(record)
             }
             var resolved = serverRequest
             resolved.status = .approved
             resolved.resolvedAt = Date()
-            let requestRecord = service.newRecord(type: RecordType.changeRequest, name: request.id)
+            let requestRecord = service.newRecord(type: RecordType.changeRequest, name: request.id, in: handle)
             resolved.apply(to: requestRecord)
 
             // Save day changes and the approval together (atomically) when
             // they fit CloudKit's per-operation limit; chunk only huge ones.
             if dayRecords.count <= 350 {
-                try await service.save(records: dayRecords + [requestRecord])
+                try await service.save(records: dayRecords + [requestRecord], in: handle)
             } else {
                 for chunk in dayRecords.chunked(into: 200) {
-                    try await service.save(records: chunk)
+                    try await service.save(records: chunk, in: handle)
                 }
-                try await service.save(records: [requestRecord])
+                try await service.save(records: [requestRecord], in: handle)
             }
 
             for change in validChanges {
@@ -976,6 +1140,7 @@ final class FamilyStore {
                 directAssigner[memberID]?.removeValue(forKey: change.dateKey)
             }
             upsert(resolved)
+            rebuildDerived()
             rememberRequestStatus(resolved)
             saveCache()
 
@@ -991,24 +1156,27 @@ final class FamilyStore {
     }
 
     func decline(_ request: ChangeRequest) async {
-        guard request.isPending, request.requester != myRole else { return }
+        guard request.isPending, request.requester != myRole(in: request.familyID) else { return }
         await resolve(request, as: .declined)
     }
 
     func cancel(_ request: ChangeRequest) async {
-        guard request.isPending, request.requester == myRole else { return }
+        guard request.isPending, request.requester == myRole(in: request.familyID) else { return }
         await resolve(request, as: .cancelled)
     }
 
     private func resolve(_ request: ChangeRequest, as status: ChangeRequest.Status) async {
+        guard let familyRef = ref(request.familyID) else { return }
+        let handle = service.handle(for: familyRef)
         do {
             var resolved = request
             resolved.status = status
             resolved.resolvedAt = Date()
-            let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
+            let record = service.newRecord(type: RecordType.changeRequest, name: request.id, in: handle)
             resolved.apply(to: record)
-            try await service.save(records: [record])
+            try await service.save(records: [record], in: handle)
             upsert(resolved)
+            rebuildDerived()
             rememberRequestStatus(resolved)
             saveCache()
         } catch {
@@ -1024,11 +1192,13 @@ final class FamilyStore {
         var skippedPending: Int
     }
 
-    /// Applies a generated schedule to ONE member. While flying solo it is
-    /// applied immediately; once both parents are connected, a bulk schedule
-    /// always becomes ONE approval request (all-or-nothing). Days inside
-    /// pending requests are always skipped.
+    /// Applies a generated schedule to ONE member. While that family is
+    /// still solo it applies immediately; once its co-parent is connected,
+    /// a bulk schedule always becomes ONE approval request (all-or-nothing).
+    /// Days inside pending requests are always skipped.
     func applyPattern(member memberID: String, proposal: [String: ParentRole]) async -> PatternOutcome? {
+        guard let ctx = context(memberID), let familyRef = ref(ctx.familyID) else { return nil }
+        let handle = service.handle(for: familyRef)
         var differing: [(String, ParentRole)] = []
         var skippedPending = 0
 
@@ -1046,7 +1216,7 @@ final class FamilyStore {
         }
 
         do {
-            if family?.partnerHasJoined == true {
+            if ctx.partnerJoined {
                 let changes = differing.map { key, newOwner in
                     DayChange(dateKey: key, newOwner: newOwner, oldOwner: owner(of: memberID, on: key))
                 }
@@ -1057,12 +1227,12 @@ final class FamilyStore {
                 var records: [CKRecord] = []
                 for (key, newOwner) in differing {
                     let recordName = DayAssignment.recordName(member: memberID, dateKey: key)
-                    let record = service.newRecord(type: RecordType.dayAssignment, name: recordName)
+                    let record = service.newRecord(type: RecordType.dayAssignment, name: recordName, in: handle)
                     DayAssignment(memberID: memberID, dateKey: key, owner: newOwner, assignedBy: newOwner).apply(to: record)
                     records.append(record)
                 }
                 for chunk in records.chunked(into: 200) {
-                    try await service.save(records: chunk)
+                    try await service.save(records: chunk, in: handle)
                 }
                 for (key, newOwner) in differing {
                     assignments[memberID, default: [:]][key] = newOwner
@@ -1077,13 +1247,14 @@ final class FamilyStore {
         }
     }
 
-    // MARK: - Settings actions
+    // MARK: - Per-family settings actions
 
-    func updateProfile(myName: String, myColorHex: String) async {
-        guard var updated = family else { return }
+    func updateProfile(familyID: String, myName: String, myColorHex: String) async {
+        guard var updated = families[familyID], let familyRef = ref(familyID) else { return }
+        let handle = service.handle(for: familyRef)
         do {
-            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
-            if myRole == .parentA {
+            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName, in: handle)
+            if familyRef.role == .parentA {
                 record["nameA"] = myName
                 record["colorA"] = myColorHex
                 updated.nameA = myName
@@ -1094,8 +1265,8 @@ final class FamilyStore {
                 updated.nameB = myName
                 updated.colorB = myColorHex
             }
-            try await service.save(records: [record])
-            family = updated
+            try await service.save(records: [record], in: handle)
+            families[familyID] = updated
             saveCache()
         } catch {
             presentError(error)
@@ -1103,106 +1274,88 @@ final class FamilyStore {
     }
 
     /// Owner deletes the calendar for everyone; participant just leaves it.
-    func leaveFamily() async {
+    /// Only affects ONE family — others keep working.
+    func leaveFamily(_ familyID: String) async {
+        guard let familyRef = ref(familyID) else { return }
         do {
-            try await service.deleteZone()
-            resetLocalState()
+            try await service.deleteZone(in: service.handle(for: familyRef))
+            removeFamilyLocally(familyID)
         } catch {
             presentError(error)
         }
     }
 
-    /// Owner-only: disconnects the co-parent. The share is deleted outright,
-    /// so their access AND the old invitation link die immediately and
-    /// permanently; a fresh link is minted the next time the invitation is
-    /// shown. The calendar and its history stay. Any pending requests are
-    /// cancelled so no day stays frozen behind an unanswerable proposal.
-    /// Nothing local is touched until the server-side revocation succeeds.
-    func removeCoParent() async {
-        guard myRole == .parentA else { return }
+    /// Owner-only: disconnects one family's co-parent. The share is deleted
+    /// outright, so their access AND the old invitation link die permanently;
+    /// a fresh link is minted the next time the invitation is shown. That
+    /// family's pending requests are cancelled. Nothing local is touched
+    /// until the server-side revocation succeeds.
+    func removeCoParent(familyID: String) async {
+        guard let familyRef = ref(familyID), familyRef.role == .parentA else { return }
+        let handle = service.handle(for: familyRef)
         do {
-            let shareID = service.recordID(forName: CKRecordNameZoneWideShare)
+            let shareID = service.recordID(forName: CKRecordNameZoneWideShare, in: handle)
             do {
-                try await service.save(records: [], deleting: [shareID])
+                try await service.save(records: [], deleting: [shareID], in: handle)
             } catch let error where Self.normalizedCKErrorCode(error) == .unknownItem {
                 // Share already gone — revocation is already effective.
             }
 
             var records: [CKRecord] = []
-            let familyRecord = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName)
+            let familyRecord = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName, in: handle)
             familyRecord["nameB"] = ""
             records.append(familyRecord)
 
             var cancelled: [ChangeRequest] = []
-            for request in requests where request.isPending {
+            for request in requests where request.isPending && request.familyID == familyID {
                 var resolved = request
                 resolved.status = .cancelled
                 resolved.resolvedAt = Date()
-                let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
+                let record = service.newRecord(type: RecordType.changeRequest, name: request.id, in: handle)
                 resolved.apply(to: record)
                 records.append(record)
                 cancelled.append(resolved)
             }
-            try await service.save(records: records)
+            try await service.save(records: records, in: handle)
 
-            if var updated = family {
+            if var updated = families[familyID] {
                 updated.nameB = ""
-                family = updated
+                families[familyID] = updated
             }
             for request in cancelled {
                 upsert(request)
                 rememberRequestStatus(request)
             }
-            shareURL = nil
+            rebuildDerived()
+            shareURLs.removeValue(forKey: familyID)
             let defaults = UserDefaults.standard
-            defaults.removeObject(forKey: Keys.shareURL)
-            defaults.set(false, forKey: Keys.shareLocked)
+            defaults.removeObject(forKey: Keys.shareURL(familyID))
+            defaults.set(false, forKey: Keys.shareLocked(familyID))
             saveCache()
         } catch {
             presentError(error)
         }
     }
 
-    /// Owner-only: makes sure a live invitation exists (e.g. after removing
-    /// a co-parent, when the old share was deleted). Called by InviteView.
-    func ensureInvitationReady() async {
-        guard myRole == .parentA, shareURL == nil, family != nil else { return }
+    /// Owner-only: makes sure a live invitation exists for one family
+    /// (e.g. after removing its co-parent). Called by InviteView.
+    func ensureInvitationReady(familyID: String) async {
+        guard let familyRef = ref(familyID), familyRef.role == .parentA,
+              shareURLs[familyID] == nil, families[familyID] != nil
+        else { return }
         do {
             let title: String
-            if let firstName = members.first?.name, !firstName.isEmpty {
+            if let firstName = membersOf(familyID).first?.name, !firstName.isEmpty {
                 title = String(localized: "Custody calendar for \(firstName)")
             } else {
                 title = "Nido"
             }
-            let url = try await service.createZoneAndShare(title: title)
-            shareURL = url
-            UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
+            let url = try await service.createZoneAndShare(zoneName: familyRef.zoneName, title: title)
+            shareURLs[familyID] = url
+            UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL(familyID))
         } catch {
             presentError(error)
         }
-    }
-
-    private func resetLocalState() {
-        let defaults = UserDefaults.standard
-        for key in [Keys.role, Keys.setupComplete, Keys.zoneOwnerName, Keys.changeToken, Keys.shareURL, Keys.requestStatuses, Keys.joinNeedsProfile, Keys.shareLocked, Keys.selectedMember] {
-            defaults.removeObject(forKey: key)
-        }
-        try? FileManager.default.removeItem(at: Self.cacheURL)
-        family = nil
-        members = []
-        assignments = [:]
-        directAssigner = [:]
-        notes = [:]
-        requests = []
-        pendingDateKeys = [:]
-        selectedMemberID = nil
-        shareURL = nil
-        setupComplete = false
-        hasZoneAccess = false
-        joinNeedsProfile = false
-        myRole = .parentA
-        service.configure(isOwner: true, zoneOwnerName: nil)
-        phase = .onboarding
     }
 
     // MARK: - Local notifications
@@ -1227,34 +1380,40 @@ final class FamilyStore {
 
     private func notifyAboutChanges(
         previousStatuses: [String: String],
-        outcome: ApplyOutcome,
-        partnerWasJoined: Bool
+        outcomes: [(familyID: String, outcome: ApplyOutcome)],
+        partnerWasJoined: [String: Bool]
     ) {
-        if myRole == .parentA, !partnerWasJoined, family?.partnerHasJoined == true {
-            postLocalNotification(
-                id: "joined-\(Int(Date().timeIntervalSince1970))",
-                title: String(localized: "Co-parent joined 🎉"),
-                body: String(localized: "\(otherName) joined the calendar. You can now plan together.")
-            )
-        }
+        for (familyID, outcome) in outcomes {
+            let coParent = families[familyID]?.name(of: myRole(in: familyID).other) ?? String(localized: "Co-parent")
 
-        // Member additions and removals by the co-parent are never silent.
-        for name in outcome.addedMemberNames {
-            postLocalNotification(
-                id: "member-added-\(name)-\(Int(Date().timeIntervalSince1970))",
-                title: String(localized: "Family updated"),
-                body: String(localized: "\(otherName) added \(name) to Nido.")
-            )
-        }
-        for deleted in outcome.deletedMembers {
-            let body = deleted.dayCount > 0
-                ? String(localized: "\(otherName) removed \(deleted.name)'s calendar, including \(deleted.dayCount) assigned days.")
-                : String(localized: "\(otherName) removed \(deleted.name) from Nido.")
-            postLocalNotification(
-                id: "member-removed-\(deleted.name)-\(Int(Date().timeIntervalSince1970))",
-                title: String(localized: "Calendar removed"),
-                body: body
-            )
+            if myRole(in: familyID) == .parentA,
+               partnerWasJoined[familyID] == false,
+               families[familyID]?.partnerHasJoined == true {
+                postLocalNotification(
+                    id: "joined-\(familyID)-\(Int(Date().timeIntervalSince1970))",
+                    title: String(localized: "Co-parent joined 🎉"),
+                    body: String(localized: "\(coParent) joined the calendar. You can now plan together.")
+                )
+            }
+
+            // Member additions and removals by a co-parent are never silent.
+            for name in outcome.addedMemberNames {
+                postLocalNotification(
+                    id: "member-added-\(name)-\(Int(Date().timeIntervalSince1970))",
+                    title: String(localized: "Family updated"),
+                    body: String(localized: "\(coParent) added \(name) to Nido.")
+                )
+            }
+            for deleted in outcome.deletedMembers {
+                let body = deleted.dayCount > 0
+                    ? String(localized: "\(coParent) removed \(deleted.name)'s calendar, including \(deleted.dayCount) assigned days.")
+                    : String(localized: "\(coParent) removed \(deleted.name) from Nido.")
+                postLocalNotification(
+                    id: "member-removed-\(deleted.name)-\(Int(Date().timeIntervalSince1970))",
+                    title: String(localized: "Calendar removed"),
+                    body: body
+                )
+            }
         }
 
         var statuses: [String: String] = [:]
@@ -1263,17 +1422,19 @@ final class FamilyStore {
         for request in requests {
             let previous = previousStatuses[request.id]
             statuses[request.id] = request.status.rawValue
+            let mine = request.requester == myRole(in: request.familyID)
+            let coParent = otherPartyName(of: request)
 
             if previous != request.status.rawValue {
                 daysExplainedByRequests.formUnion(request.changes.map { request.memberID + "|" + $0.dateKey })
             }
 
-            if request.requester != myRole, request.isPending, previous == nil {
+            if !mine, request.isPending, previous == nil {
                 let count = request.changes.count
                 let memberName = member(request.memberID)?.name ?? ""
                 let body = count == 1
-                    ? String(localized: "\(otherName) proposes a change for \(memberName): \(Day.shortLabel(for: request.changes[0].dateKey)).")
-                    : String(localized: "\(otherName) proposes changes to \(count) of \(memberName)'s days.")
+                    ? String(localized: "\(coParent) proposes a change for \(memberName): \(Day.shortLabel(for: request.changes[0].dateKey)).")
+                    : String(localized: "\(coParent) proposes changes to \(count) of \(memberName)'s days.")
                 postLocalNotification(
                     id: "request-\(request.id)",
                     title: String(localized: "New change request"),
@@ -1283,22 +1444,20 @@ final class FamilyStore {
 
             // Transitions out of pending are only ever remote here: my own
             // approve/decline/cancel actions pre-record their status, so
-            // they never appear as a transition. That makes it safe to
-            // notify cancellations too (e.g. a proposal that died because
-            // the co-parent removed a member).
-            if request.requester == myRole, previous == ChangeRequest.Status.pending.rawValue, !request.isPending {
+            // they never appear as a transition.
+            if mine, previous == ChangeRequest.Status.pending.rawValue, !request.isPending {
                 switch request.status {
                 case .approved:
                     postLocalNotification(
                         id: "resolved-\(request.id)",
                         title: String(localized: "Request approved 🎉"),
-                        body: String(localized: "\(otherName) approved your schedule change.")
+                        body: String(localized: "\(coParent) approved your schedule change.")
                     )
                 case .declined:
                     postLocalNotification(
                         id: "resolved-\(request.id)",
                         title: String(localized: "Request declined"),
-                        body: String(localized: "\(otherName) declined your schedule change.")
+                        body: String(localized: "\(coParent) declined your schedule change.")
                     )
                 case .cancelled:
                     let body: String
@@ -1319,10 +1478,13 @@ final class FamilyStore {
         }
         UserDefaults.standard.set(statuses, forKey: Keys.requestStatuses)
 
-        // Direct assignments made by the co-parent (not explained by any
+        // Direct assignments made by a co-parent (not explained by any
         // request activity) also deserve a heads-up — no silent rescheduling.
-        let unexplained = outcome.changedDays.subtracting(daysExplainedByRequests)
-        if !unexplained.isEmpty, family?.partnerHasJoined == true {
+        for (familyID, outcome) in outcomes {
+            guard families[familyID]?.partnerHasJoined == true else { continue }
+            let coParent = families[familyID]?.name(of: myRole(in: familyID).other) ?? ""
+            let unexplained = outcome.changedDays.subtracting(daysExplainedByRequests)
+            guard !unexplained.isEmpty else { continue }
             var byMember: [String: [String]] = [:]
             for composite in unexplained {
                 let parts = composite.split(separator: "|", maxSplits: 1)
@@ -1333,13 +1495,13 @@ final class FamilyStore {
             if byMember.count == 1, let (memberID, dates) = byMember.first {
                 let memberName = member(memberID)?.name ?? ""
                 body = dates.count == 1
-                    ? String(localized: "\(otherName) updated \(memberName)'s day \(Day.shortLabel(for: dates[0])).")
-                    : String(localized: "\(otherName) updated \(dates.count) of \(memberName)'s days.")
+                    ? String(localized: "\(coParent) updated \(memberName)'s day \(Day.shortLabel(for: dates[0])).")
+                    : String(localized: "\(coParent) updated \(dates.count) of \(memberName)'s days.")
             } else {
-                body = String(localized: "\(otherName) updated \(unexplained.count) days on the calendar.")
+                body = String(localized: "\(coParent) updated \(unexplained.count) days on the calendar.")
             }
             postLocalNotification(
-                id: "days-\(Int(Date().timeIntervalSince1970))",
+                id: "days-\(familyID)-\(Int(Date().timeIntervalSince1970))",
                 title: String(localized: "Calendar updated"),
                 body: body
             )
@@ -1355,33 +1517,34 @@ final class FamilyStore {
         UNUserNotificationCenter.current().add(request)
     }
 
-    // MARK: - Change token persistence
+    // MARK: - Change token persistence (per family)
 
-    private var changeToken: CKServerChangeToken? {
-        get {
-            guard let data = UserDefaults.standard.data(forKey: Keys.changeToken) else { return nil }
-            return try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: data)
-        }
-        set {
-            let defaults = UserDefaults.standard
-            if let newValue,
-               let data = try? NSKeyedArchiver.archivedData(withRootObject: newValue, requiringSecureCoding: true) {
-                defaults.set(data, forKey: Keys.changeToken)
-            } else {
-                defaults.removeObject(forKey: Keys.changeToken)
-            }
+    private func changeToken(for familyID: String) -> CKServerChangeToken? {
+        guard let data = UserDefaults.standard.data(forKey: Keys.changeToken(familyID)) else { return nil }
+        return try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: data)
+    }
+
+    private func setChangeToken(_ token: CKServerChangeToken?, for familyID: String) {
+        let defaults = UserDefaults.standard
+        if let token,
+           let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true) {
+            defaults.set(data, forKey: Keys.changeToken(familyID))
+        } else {
+            defaults.removeObject(forKey: Keys.changeToken(familyID))
         }
     }
 
     // MARK: - Offline cache
 
     private struct CachePayload: Codable {
-        var family: Family?
-        var members: [Member]
+        var families: [String: Family]
+        var membersByID: [String: Member]
+        var memberFamily: [String: String]
         var assignments: [String: [String: ParentRole]]
         var directAssigner: [String: [String: ParentRole]]
         var notes: [String: [String: String]]
         var requests: [ChangeRequest]
+        var shareURLs: [String: URL]
     }
 
     private static var cacheURL: URL {
@@ -1392,12 +1555,14 @@ final class FamilyStore {
 
     private func saveCache() {
         let payload = CachePayload(
-            family: family,
-            members: members,
+            families: families,
+            membersByID: membersByID,
+            memberFamily: memberFamily,
             assignments: assignments,
             directAssigner: directAssigner,
             notes: notes,
-            requests: requests
+            requests: requests,
+            shareURLs: shareURLs
         )
         if let data = try? JSONEncoder().encode(payload) {
             try? data.write(to: Self.cacheURL, options: .atomic)
@@ -1408,15 +1573,15 @@ final class FamilyStore {
         guard let data = try? Data(contentsOf: Self.cacheURL),
               let payload = try? JSONDecoder().decode(CachePayload.self, from: data)
         else { return }
-        family = payload.family
-        members = payload.members
+        families = payload.families
+        membersByID = payload.membersByID
+        memberFamily = payload.memberFamily
         assignments = payload.assignments
         directAssigner = payload.directAssigner
         notes = payload.notes
         requests = payload.requests
-        sortMembers()
-        if selectedMember == nil { selectedMemberID = members.first?.id }
-        rebuildPendingDateKeys()
+        shareURLs = payload.shareURLs
+        rebuildDerived()
     }
 
     // MARK: - Errors

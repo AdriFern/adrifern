@@ -5,6 +5,7 @@ import SwiftUI
 /// Used both at the end of onboarding and from Settings.
 struct InviteView: View {
     @Environment(FamilyStore.self) private var store
+    var familyID: String
     var isOnboarding: Bool
 
     var body: some View {
@@ -21,7 +22,7 @@ struct InviteView: View {
                 }
                 .padding(.top, 16)
 
-                if let url = store.shareURL {
+                if let url = store.shareURL(for: familyID) {
                     QRCodeView(text: url.absoluteString)
                         .frame(width: 232, height: 232)
                         .padding(20)
@@ -65,7 +66,7 @@ struct InviteView: View {
         .navigationBarTitleDisplayMode(.inline)
         // Mints a fresh invitation when the previous one was closed
         // (e.g. after removing a co-parent).
-        .task { await store.ensureInvitationReady() }
+        .task { await store.ensureInvitationReady(familyID: familyID) }
         // Errors must be able to present when this view sits in a sheet.
         .alert(item: $store.alert) { alert in
             Alert(

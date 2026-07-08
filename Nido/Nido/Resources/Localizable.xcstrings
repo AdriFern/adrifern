@@ -475,6 +475,17 @@
         }
       }
     },
+    "A family is one co-parent plus the children or pets you share with them. Families are completely separate — the other family never sees anything.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una familia es un progenitor más los hijos o mascotas que compartes con esa persona. Las familias son totalmente independientes: la otra familia nunca ve nada."
+          }
+        }
+      }
+    },
     "Add a child or pet": {
       "extractionState": "manual",
       "localizations": {
@@ -493,6 +504,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Añade un mensaje (opcional)"
+          }
+        }
+      }
+    },
+    "Add another family": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir otra familia"
+          }
+        }
+      }
+    },
+    "Add another family (new co-parent)": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir otra familia (otro progenitor)"
           }
         }
       }
@@ -526,17 +559,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "¡Ya casi está!"
-          }
-        }
-      }
-    },
-    "Already connected": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ya conectado"
           }
         }
       }
@@ -1003,6 +1025,17 @@
         }
       }
     },
+    "Each family is a separate, private calendar with one co-parent. Families never see each other's schedules.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada familia es un calendario privado e independiente con un progenitor. Las familias nunca ven los calendarios de las demás."
+          }
+        }
+      }
+    },
     "Every other weekend": {
       "extractionState": "manual",
       "localizations": {
@@ -1032,6 +1065,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todo se guarda en tu iCloud privado y solo se comparte entre vosotros dos. Las notificaciones llegan automáticamente cuando algo cambia."
+          }
+        }
+      }
+    },
+    "Families": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Familias"
+          }
+        }
+      }
+    },
+    "Family": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Familia"
           }
         }
       }
@@ -2219,6 +2274,17 @@
         }
       }
     },
+    "The calendar you share with %@ was deleted or your access was removed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El calendario que compartes con %@ se eliminó o se retiró tu acceso."
+          }
+        }
+      }
+    },
     "The invitation link could not be created. Please try again.": {
       "extractionState": "manual",
       "localizations": {
@@ -2278,17 +2344,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "The shared calendar was deleted or your access was removed. You can create a new one or join another invitation.": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El calendario compartido se eliminó o se retiró tu acceso. Puedes crear uno nuevo o unirte con otra invitación."
           }
         }
       }
@@ -2355,17 +2410,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esto elimina todo su calendario, sus notas y sus solicitudes pendientes para ambos progenitores. No se puede deshacer."
-          }
-        }
-      }
-    },
-    "This device is already part of a family calendar. To join a different one, first leave the current calendar in Settings.": {
-      "extractionState": "manual",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este dispositivo ya forma parte de un calendario familiar. Para unirte a otro, primero sal del calendario actual en Ajustes."
           }
         }
       }
@@ -2532,6 +2576,17 @@
         }
       }
     },
+    "Waiting for approval": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando aprobación"
+          }
+        }
+      }
+    },
     "Waiting for the calendar to sync…": {
       "extractionState": "manual",
       "localizations": {
@@ -2539,6 +2594,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esperando a que el calendario se sincronice…"
+          }
+        }
+      }
+    },
+    "Waiting for your co-parent": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando al otro progenitor"
           }
         }
       }
@@ -2561,6 +2627,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cuando cualquiera de los dos proponga un cambio, aparecerá aquí para que el otro lo apruebe."
+          }
+        }
+      }
+    },
+    "Which family?": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué familia?"
           }
         }
       }
@@ -2598,6 +2675,17 @@
         }
       }
     },
+    "With %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con %@"
+          }
+        }
+      }
+    },
     "You": {
       "extractionState": "manual",
       "localizations": {
@@ -2627,6 +2715,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puedes dejar este día sin asignar, pero pasárselo a %@ necesita su aprobación."
+          }
+        }
+      }
+    },
+    "You in this family": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú en esta familia"
           }
         }
       }

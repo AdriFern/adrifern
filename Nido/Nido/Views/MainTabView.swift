@@ -18,5 +18,15 @@ struct MainTabView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
+        // Joining an ADDITIONAL family (while others already exist) asks for
+        // the name/color to use in that family without leaving the app.
+        .sheet(isPresented: Binding(
+            get: { store.pendingJoinFamilyID != nil && store.phase == .ready },
+            set: { _ in /* dismissal keeps the join pending; it re-surfaces on next launch */ }
+        )) {
+            NavigationStack {
+                JoinProfileView()
+            }
+        }
     }
 }

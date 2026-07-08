@@ -92,12 +92,15 @@ struct WelcomeView: View {
 
 struct CreateFamilyView: View {
     @Environment(FamilyStore.self) private var store
+    /// True when adding another family from Settings (not first onboarding).
+    var isAdditional = false
     @State private var myName = ""
     @State private var childName = ""
     @State private var childKind: Member.Kind = .child
     @State private var colorHex = Palette.defaultA
     @State private var isCreating = false
     @State private var showInvite = false
+    @State private var createdFamilyID: String?
     @FocusState private var focusedField: Field?
 
     private enum Field { case myName, childName }
@@ -162,14 +165,17 @@ struct CreateFamilyView: View {
                 Button {
                     Task {
                         isCreating = true
-                        let success = await store.createFamily(
+                        let familyID = await store.createFamily(
                             myName: myName.trimmingCharacters(in: .whitespaces),
                             firstMemberName: childName.trimmingCharacters(in: .whitespaces),
                             firstMemberKind: childKind,
                             colorHex: colorHex
                         )
                         isCreating = false
-                        if success { showInvite = true }
+                        if let familyID {
+                            createdFamilyID = familyID
+                            showInvite = true
+                        }
                     }
                 } label: {
                     if isCreating {
@@ -187,8 +193,17 @@ struct CreateFamilyView: View {
         .background(Theme.background)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showInvite) {
-            InviteView(isOnboarding: true)
+            InviteView(familyID: createdFamilyID ?? "", isOnboarding: !isAdditional)
                 .navigationBarBackButtonHidden(true)
+        }
+        .onAppear {
+            if isAdditional, myName.isEmpty {
+                // Reuse the name they already go by in another family.
+                if let ref = store.familyRefs.first,
+                   let family = store.family(ref.id) {
+                    myName = family.name(of: ref.role)
+                }
+            }
         }
     }
 }
@@ -201,7 +216,7 @@ struct JoinProfileView: View {
     @State private var colorHex = Palette.defaultB
     @State private var isSaving = false
 
-    private var takenColor: String? { store.family?.colorA }
+    private var takenColor: String? { store.pendingJoinFamily?.colorA }
 
     private var canContinue: Bool {
         !myName.trimmingCharacters(in: .whitespaces).isEmpty
@@ -213,7 +228,9 @@ struct JoinProfileView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Almost there!")
                         .font(.title.bold())
-                    if let family = store.family, let first = store.members.first {
+                    if let family = store.pendingJoinFamily,
+                       let familyID = store.pendingJoinFamilyID,
+                       let first = store.membersOf(familyID).first {
                         Text("You're joining \(first.name)'s calendar with \(family.name(of: .parentA)).")
                             .foregroundStyle(.secondary)
                     } else {
@@ -242,7 +259,7 @@ struct JoinProfileView: View {
 
                 Spacer(minLength: 12)
 
-                if store.family == nil {
+                if store.pendingJoinFamily == nil {
                     HStack(spacing: 8) {
                         ProgressView()
                         Text("Waiting for the calendar to sync…")
@@ -269,8 +286,8 @@ struct JoinProfileView: View {
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(!canContinue || isSaving || store.family == nil)
-                .opacity(canContinue && store.family != nil ? 1 : 0.5)
+                .disabled(!canContinue || isSaving || store.pendingJoinFamily == nil)
+                .opacity(canContinue && store.pendingJoinFamily != nil ? 1 : 0.5)
             }
             .padding(24)
         }
@@ -280,7 +297,7 @@ struct JoinProfileView: View {
                 colorHex = Palette.options.first { $0 != taken } ?? Palette.defaultB
             }
         }
-        .onChange(of: store.family) { _, _ in
+        .onChange(of: store.pendingJoinFamily) { _, _ in
             if let taken = takenColor, colorHex == taken {
                 colorHex = Palette.options.first { $0 != taken } ?? Palette.defaultB
             }

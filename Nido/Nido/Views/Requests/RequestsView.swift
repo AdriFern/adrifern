@@ -32,7 +32,9 @@ struct RequestsView: View {
                                     RequestRow(request: request, mode: .outgoing)
                                 }
                             } header: {
-                                Text("Waiting for \(store.otherName)")
+                                // Outgoing requests may target different
+                                // co-parents when several families exist.
+                                Text(outgoingHeader)
                             }
                         }
 
@@ -56,6 +58,14 @@ struct RequestsView: View {
             }
         }
     }
+
+    private var outgoingHeader: String {
+        let names = Set(store.pendingOutgoing.map { store.otherPartyName(of: $0) })
+        if names.count == 1, let only = names.first {
+            return String(localized: "Waiting for \(only)")
+        }
+        return String(localized: "Waiting for approval")
+    }
 }
 
 // MARK: - Row
@@ -71,8 +81,10 @@ struct RequestRow: View {
     @State private var isWorking = false
 
     private var requesterName: String {
-        store.family?.name(of: request.requester) ?? ""
+        store.requesterName(of: request)
     }
+
+    private var family: Family? { store.family(request.familyID) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -189,7 +201,7 @@ struct RequestRow: View {
     private var changesList: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(visibleChanges, id: \.self) { change in
-                if let family = store.family {
+                if let family = family {
                     // Long names (especially in Spanish) fall back to two lines.
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) {

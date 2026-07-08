@@ -8,6 +8,9 @@ struct PatternSheet: View {
 
     let member: Member
 
+    private var ctx: FamilyStore.MemberContext? { store.context(member.id) }
+    private var otherName: String { ctx?.otherName ?? String(localized: "Co-parent") }
+
     @State private var template: PatternTemplate = .alternatingWeeks
     @State private var startDate = Calendar.current.startOfDay(for: Date())
     @State private var endDate = Calendar.current.date(byAdding: .month, value: 3, to: Date()) ?? Date()
@@ -80,7 +83,7 @@ struct PatternSheet: View {
                         if isApplying {
                             ProgressView().tint(.white)
                         } else {
-                            Text(store.family?.partnerHasJoined == true
+                            Text(ctx?.partnerJoined == true
                                  ? String(localized: "Send schedule for approval")
                                  : String(localized: "Apply schedule"))
                         }
@@ -98,7 +101,7 @@ struct PatternSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .onAppear { firstParent = store.myRole }
+            .onAppear { firstParent = ctx?.myRole ?? .parentA }
             .alert(item: $outcomeSummary) { summary in
                 Alert(
                     title: Text(summary.title),
@@ -190,7 +193,7 @@ struct PatternSheet: View {
             Text(firstParentLabel)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
-            if let family = store.family {
+            if let family = ctx?.family {
                 Picker(firstParentLabel, selection: $firstParent) {
                     Text(family.name(of: .parentA)).tag(ParentRole.parentA)
                     Text(family.name(of: .parentB)).tag(ParentRole.parentB)
@@ -204,7 +207,7 @@ struct PatternSheet: View {
 
     private var weekdayPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let family = store.family {
+            if let family = ctx?.family {
                 Text("Days of the week for \(family.name(of: firstParent))")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -248,7 +251,7 @@ struct PatternSheet: View {
             Text("Preview (first two weeks)")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
-            if let family = store.family {
+            if let family = ctx?.family {
                 let keys = Day.keys(
                     from: startDate,
                     to: Day.calendar.date(byAdding: .day, value: 13, to: startDate) ?? startDate
@@ -283,8 +286,8 @@ struct PatternSheet: View {
 
     private var footerNote: some View {
         Label {
-            if store.family?.partnerHasJoined == true {
-                Text("The schedule is sent to \(store.otherName) as one proposal — nothing changes until they approve it. Days in pending requests are left untouched.")
+            if ctx?.partnerJoined == true {
+                Text("The schedule is sent to \(otherName) as one proposal — nothing changes until they approve it. Days in pending requests are left untouched.")
             } else {
                 Text("Until your co-parent joins, the schedule is filled in right away and you can adjust it freely.")
             }
@@ -312,7 +315,7 @@ struct PatternSheet: View {
             let title: String
             if outcome.sentForApproval > 0 {
                 title = String(localized: "Proposal sent")
-                parts.append(String(localized: "The schedule was sent to \(store.otherName) as one proposal covering \(outcome.sentForApproval) days. It will apply once they approve it."))
+                parts.append(String(localized: "The schedule was sent to \(otherName) as one proposal covering \(outcome.sentForApproval) days. It will apply once they approve it."))
             } else if outcome.appliedDirectly > 0 {
                 title = String(localized: "Schedule applied")
                 parts.append(String(localized: "\(outcome.appliedDirectly) days were filled in."))

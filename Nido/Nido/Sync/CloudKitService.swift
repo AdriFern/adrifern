@@ -1,38 +1,38 @@
 import CloudKit
 import Foundation
 
-/// Thin wrapper around CloudKit. The family lives in one custom record zone:
-/// in the owner's (parent A) private database, shared with parent B through a
-/// zone-wide CKShare. Parent B reaches the same zone via the shared database.
+/// Thin wrapper around CloudKit. Every family lives in its own record zone:
+/// zones the user created sit in their private database (shared out through
+/// a zone-wide CKShare); zones they were invited to are reached through the
+/// shared database. One person can hold several such zones at once — one
+/// per co-parenting relationship.
 @MainActor
 final class CloudKitService {
-    static let zoneName = "FamilyZone"
+    static let zonePrefix = "FamilyZone"
 
     let container: CKContainer
 
-    /// True for the parent who created the family (records live in the private DB).
-    private(set) var isOwner: Bool
-    private(set) var zoneID: CKRecordZone.ID
-
-    init(isOwner: Bool, zoneOwnerName: String?) {
+    init() {
         let bundleID = Bundle.main.bundleIdentifier ?? "com.adrifern.nido"
         self.container = CKContainer(identifier: "iCloud.\(bundleID)")
-        self.isOwner = isOwner
-        self.zoneID = CKRecordZone.ID(
-            zoneName: Self.zoneName,
-            ownerName: zoneOwnerName ?? CKCurrentUserDefaultName
-        )
     }
 
-    var database: CKDatabase {
-        isOwner ? container.privateCloudDatabase : container.sharedCloudDatabase
+    /// Everything needed to address one family's zone.
+    struct ZoneHandle {
+        let database: CKDatabase
+        let zoneID: CKRecordZone.ID
     }
 
-    func configure(isOwner: Bool, zoneOwnerName: String?) {
-        self.isOwner = isOwner
-        self.zoneID = CKRecordZone.ID(
-            zoneName: Self.zoneName,
-            ownerName: zoneOwnerName ?? CKCurrentUserDefaultName
+    func handle(for ref: FamilyRef) -> ZoneHandle {
+        if ref.role == .parentA {
+            return ZoneHandle(
+                database: container.privateCloudDatabase,
+                zoneID: CKRecordZone.ID(zoneName: ref.zoneName, ownerName: CKCurrentUserDefaultName)
+            )
+        }
+        return ZoneHandle(
+            database: container.sharedCloudDatabase,
+            zoneID: CKRecordZone.ID(zoneName: ref.zoneName, ownerName: ref.zoneOwnerName ?? CKCurrentUserDefaultName)
         )
     }
 
@@ -44,15 +44,14 @@ final class CloudKitService {
 
     // MARK: - Zone + share (owner side)
 
-    /// Creates the custom zone and a zone-wide share, returning the invitation URL.
-    /// Safe to call again after a reinstall: an existing share is reused.
-    func createZoneAndShare(title: String) async throws -> URL {
-        let zone = CKRecordZone(zoneName: Self.zoneName)
+    /// Creates a custom zone and a zone-wide share, returning the invitation
+    /// URL. Safe to call again for the same zone: an existing share is reused.
+    func createZoneAndShare(zoneName: String, title: String) async throws -> URL {
+        let zone = CKRecordZone(zoneName: zoneName)
         _ = try await container.privateCloudDatabase.save(zone)
 
-        // A zone can only carry one zone-wide share; reuse it if it exists
-        // (e.g. the app was deleted and reinstalled).
-        if let existing = try? await fetchShare(), let url = existing.url {
+        let handle = ZoneHandle(database: container.privateCloudDatabase, zoneID: zone.zoneID)
+        if let existing = try? await fetchShare(in: handle), let url = existing.url {
             return url
         }
 
@@ -60,7 +59,7 @@ final class CloudKitService {
         share.publicPermission = .readWrite
         share[CKShare.SystemFieldKey.title] = title
         do {
-            let saved = try await save(records: [share], in: container.privateCloudDatabase)
+            let saved = try await save(records: [share], in: handle)
             guard let savedShare = saved.compactMap({ $0 as? CKShare }).first,
                   let url = savedShare.url
             else { throw NidoError.shareURLMissing }
@@ -69,25 +68,31 @@ final class CloudKitService {
             // The save can fail because a share already exists but the
             // earlier lookup hit a transient error — try the lookup again
             // before surfacing a cryptic CloudKit message.
-            if let existing = try? await fetchShare(), let url = existing.url {
+            if let existing = try? await fetchShare(in: handle), let url = existing.url {
                 return url
             }
             throw error
         }
     }
 
-    /// Re-fetches the zone share to recover the invitation URL and participant list.
-    func fetchShare() async throws -> CKShare? {
-        let shareRecordID = CKRecord.ID(
-            recordName: CKRecordNameZoneWideShare,
-            zoneID: zoneID
-        )
+    /// Re-fetches a zone's share to recover the invitation URL.
+    func fetchShare(in handle: ZoneHandle) async throws -> CKShare? {
+        let shareRecordID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: handle.zoneID)
         do {
-            let record = try await database.record(for: shareRecordID)
+            let record = try await handle.database.record(for: shareRecordID)
             return record as? CKShare
         } catch let error as CKError where error.code == .unknownItem {
             return nil
         }
+    }
+
+    /// All family zones this account can reach, owned and shared.
+    func listFamilyZones() async throws -> (owned: [CKRecordZone], shared: [CKRecordZone]) {
+        let owned = try await container.privateCloudDatabase.allRecordZones()
+            .filter { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) }
+        let shared = (try? await container.sharedCloudDatabase.allRecordZones())?
+            .filter { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) } ?? []
+        return (owned, shared)
     }
 
     // MARK: - Share acceptance (joiner side)
@@ -129,8 +134,8 @@ final class CloudKitService {
         var moreComing = false
     }
 
-    /// Incremental fetch of everything that changed in the family zone.
-    func fetchZoneChanges(since token: CKServerChangeToken?) async throws -> ZoneChanges {
+    /// Incremental fetch of everything that changed in one family's zone.
+    func fetchZoneChanges(in handle: ZoneHandle, since token: CKServerChangeToken?) async throws -> ZoneChanges {
         var changes = ZoneChanges()
         var currentToken = token
         var moreComing = true
@@ -142,8 +147,8 @@ final class CloudKitService {
                 configuration.previousServerChangeToken = currentToken
 
                 let operation = CKFetchRecordZoneChangesOperation(
-                    recordZoneIDs: [zoneID],
-                    configurationsByRecordZoneID: [zoneID: configuration]
+                    recordZoneIDs: [handle.zoneID],
+                    configurationsByRecordZoneID: [handle.zoneID: configuration]
                 )
                 var partial = ZoneChanges()
 
@@ -180,7 +185,7 @@ final class CloudKitService {
                     }
                 }
                 operation.qualityOfService = .userInitiated
-                self.database.add(operation)
+                handle.database.add(operation)
             }
 
             changes.changedRecords.append(contentsOf: batch.changedRecords)
@@ -196,19 +201,18 @@ final class CloudKitService {
 
     // MARK: - Saving
 
-    func recordID(forName name: String) -> CKRecord.ID {
-        CKRecord.ID(recordName: name, zoneID: zoneID)
+    func recordID(forName name: String, in handle: ZoneHandle) -> CKRecord.ID {
+        CKRecord.ID(recordName: name, zoneID: handle.zoneID)
     }
 
-    func newRecord(type: String, name: String) -> CKRecord {
-        CKRecord(recordType: type, recordID: recordID(forName: name))
+    func newRecord(type: String, name: String, in handle: ZoneHandle) -> CKRecord {
+        CKRecord(recordType: type, recordID: recordID(forName: name, in: handle))
     }
 
     /// Saves with last-writer-wins semantics; fine for a two-person calendar.
     @discardableResult
-    func save(records: [CKRecord], deleting recordIDs: [CKRecord.ID] = [], in databaseOverride: CKDatabase? = nil) async throws -> [CKRecord] {
-        let db = databaseOverride ?? database
-        let (saveResults, deleteResults) = try await db.modifyRecords(
+    func save(records: [CKRecord], deleting recordIDs: [CKRecord.ID] = [], in handle: ZoneHandle) async throws -> [CKRecord] {
+        let (saveResults, deleteResults) = try await handle.database.modifyRecords(
             saving: records,
             deleting: recordIDs,
             savePolicy: .changedKeys,
@@ -225,41 +229,47 @@ final class CloudKitService {
     }
 
     /// Fetches an existing record by name, or creates a new one if it doesn't exist yet.
-    func fetchOrCreateRecord(type: String, name: String) async throws -> CKRecord {
+    func fetchOrCreateRecord(type: String, name: String, in handle: ZoneHandle) async throws -> CKRecord {
         do {
-            return try await database.record(for: recordID(forName: name))
+            return try await handle.database.record(for: recordID(forName: name, in: handle))
         } catch let error as CKError where error.code == .unknownItem {
-            return newRecord(type: type, name: name)
+            return newRecord(type: type, name: name, in: handle)
         }
     }
 
     // MARK: - Subscriptions (push)
 
-    func saveSubscriptions() async throws {
+    private static var notificationInfo: CKSubscription.NotificationInfo {
         // A visible (localized, generic) alert makes delivery reliable even
         // when the app is force-quit; content-available additionally wakes
         // the app to refresh and post specific local notifications.
-        let notificationInfo = CKSubscription.NotificationInfo()
-        notificationInfo.shouldSendContentAvailable = true
-        notificationInfo.alertLocalizationKey = "PUSH_CALENDAR_UPDATED"
-        notificationInfo.soundName = "default"
+        let info = CKSubscription.NotificationInfo()
+        info.shouldSendContentAvailable = true
+        info.alertLocalizationKey = "PUSH_CALENDAR_UPDATED"
+        info.soundName = "default"
+        return info
+    }
 
-        if isOwner {
-            let subscription = CKRecordZoneSubscription(zoneID: zoneID, subscriptionID: "nido-zone-changes")
-            subscription.notificationInfo = notificationInfo
-            _ = try await container.privateCloudDatabase.save(subscription)
-        } else {
-            let subscription = CKDatabaseSubscription(subscriptionID: "nido-shared-changes")
-            subscription.notificationInfo = notificationInfo
-            _ = try await container.sharedCloudDatabase.save(subscription)
-        }
+    /// Owner side: one subscription per owned family zone.
+    func saveZoneSubscription(zoneName: String) async throws {
+        let zoneID = CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
+        let subscription = CKRecordZoneSubscription(zoneID: zoneID, subscriptionID: "nido-zone-\(zoneName)")
+        subscription.notificationInfo = Self.notificationInfo
+        _ = try await container.privateCloudDatabase.save(subscription)
+    }
+
+    /// Participant side: one database subscription covers every shared zone.
+    func saveSharedDatabaseSubscription() async throws {
+        let subscription = CKDatabaseSubscription(subscriptionID: "nido-shared-changes")
+        subscription.notificationInfo = Self.notificationInfo
+        _ = try await container.sharedCloudDatabase.save(subscription)
     }
 
     // MARK: - Leaving / deleting
 
     /// Owner: deletes the whole zone. Participant: removes themself from the share.
-    func deleteZone() async throws {
-        _ = try await database.deleteRecordZone(withID: zoneID)
+    func deleteZone(in handle: ZoneHandle) async throws {
+        _ = try await handle.database.deleteRecordZone(withID: handle.zoneID)
     }
 }
 
