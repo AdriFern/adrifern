@@ -310,8 +310,11 @@ struct JoinProfileView: View {
             // A wrong or unwanted invitation must always be refusable —
             // joining is consent, never an obligation.
             ToolbarItem(placement: .topBarTrailing) {
+                // Declining needs the family loaded too — the user should
+                // see whose invitation they're refusing before it acts.
                 Button("Don't join") { confirmDecline = true }
                     .foregroundStyle(.red)
+                    .disabled(store.pendingJoinFamily == nil)
             }
         }
         .confirmationDialog(

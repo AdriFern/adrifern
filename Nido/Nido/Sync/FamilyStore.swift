@@ -1540,6 +1540,10 @@ final class FamilyStore {
 
         var statuses: [String: String] = [:]
         var daysExplainedByRequests: Set<String> = []
+        // A pass only announces requests from families it actually synced —
+        // a concurrent join (syncFamilies) may have appended requests whose
+        // statuses weren't in this pass's previousStatuses snapshot.
+        let syncedFamilyIDs = Set(outcomes.map(\.familyID))
 
         for request in requests {
             let previous = previousStatuses[request.id]
@@ -1552,6 +1556,7 @@ final class FamilyStore {
             }
 
             if !mine, request.isPending, previous == nil,
+               syncedFamilyIDs.contains(request.familyID),
                !initialSyncFamilyIDs.contains(request.familyID) {
                 let count = request.changes.count
                 let memberName = member(request.memberID)?.name ?? ""
@@ -1569,6 +1574,7 @@ final class FamilyStore {
             // approve/decline/cancel actions pre-record their status, so
             // they never appear as a transition.
             if mine, previous == ChangeRequest.Status.pending.rawValue, !request.isPending,
+               syncedFamilyIDs.contains(request.familyID),
                !initialSyncFamilyIDs.contains(request.familyID) {
                 switch request.status {
                 case .approved:
