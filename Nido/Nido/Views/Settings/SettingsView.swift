@@ -149,22 +149,44 @@ struct SettingsView: View {
     private var membersSection: some View {
         Section {
             ForEach(store.members) { member in
+                let draftName = memberNames[member.id] ?? member.name
                 HStack(spacing: 10) {
-                    Image(systemName: member.symbolName)
-                        .foregroundStyle(Color.accentColor)
-                        .frame(width: 22)
+                    // Tapping the icon flips child ↔ pet — no need to
+                    // delete a calendar to fix a mis-tap.
+                    Button {
+                        Task {
+                            await store.setMemberKind(member.id, to: member.kind == .child ? .pet : .child)
+                        }
+                    } label: {
+                        Image(systemName: member.symbolName)
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 22)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(Text("Switch between child and pet"))
+
                     TextField(
                         "Name",
                         text: Binding(
-                            get: { memberNames[member.id] ?? member.name },
+                            get: { draftName },
                             set: { memberNames[member.id] = $0 }
                         )
                     )
                     .onSubmit {
-                        Task { await store.renameMember(member.id, to: memberNames[member.id] ?? member.name) }
+                        Task { await store.renameMember(member.id, to: draftName) }
                     }
                     Spacer()
-                    if store.members.count > 1 {
+                    if draftName.trimmingCharacters(in: .whitespaces) != member.name,
+                       !draftName.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button {
+                            Task { await store.renameMember(member.id, to: draftName) }
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(Text("Save name"))
+                    } else if store.members.count > 1 {
                         Button {
                             memberToDelete = member
                         } label: {
@@ -302,7 +324,9 @@ struct SettingsView: View {
     }
 
     private func syncMemberNames() {
-        for member in store.members {
+        // Seed only missing entries so a remote sync never clobbers a
+        // rename the user is typing right now.
+        for member in store.members where memberNames[member.id] == nil {
             memberNames[member.id] = member.name
         }
         memberNames = memberNames.filter { id, _ in store.members.contains { $0.id == id } }

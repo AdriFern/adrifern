@@ -520,36 +520,56 @@ final class FamilyStore {
         }
     }
 
+    /// Fixing a mis-tapped child/pet choice shouldn't require deleting the
+    /// whole calendar — the kind is presentational (icon + wording).
+    func setMemberKind(_ memberID: String, to kind: Member.Kind) async {
+        guard let index = members.firstIndex(where: { $0.id == memberID }),
+              members[index].kind != kind
+        else { return }
+        do {
+            let record = service.newRecord(type: RecordType.member, name: memberID)
+            var updated = members[index]
+            updated.kind = kind
+            updated.apply(to: record)
+            try await service.save(records: [record])
+            members[index] = updated
+            saveCache()
+        } catch {
+            presentError(error)
+        }
+    }
+
     /// Removes a member and every record of theirs (days, notes) plus their
-    /// pending requests. The last member can't be deleted.
+    /// pending requests. The last member can't be deleted. The member record
+    /// and the request cancellations go in ONE atomic operation, so a crash
+    /// mid-way can never leave ghost pending requests behind; day/note
+    /// deletions follow (orphans are also pruned defensively in `apply`).
     func deleteMember(_ memberID: String) async {
         guard members.count > 1, members.contains(where: { $0.id == memberID }) else { return }
         do {
-            var deleteIDs: [CKRecord.ID] = [service.recordID(forName: memberID)]
-            for dateKey in (assignments[memberID] ?? [:]).keys {
-                deleteIDs.append(service.recordID(forName: DayAssignment.recordName(member: memberID, dateKey: dateKey)))
-            }
-            for dateKey in (notes[memberID] ?? [:]).keys {
-                deleteIDs.append(service.recordID(forName: DayNote.recordName(member: memberID, dateKey: dateKey)))
-            }
             var cancelled: [ChangeRequest] = []
-            var saveRecords: [CKRecord] = []
+            var cancelRecords: [CKRecord] = []
             for request in requests where request.isPending && request.memberID == memberID {
                 var resolved = request
                 resolved.status = .cancelled
                 resolved.resolvedAt = Date()
                 let record = service.newRecord(type: RecordType.changeRequest, name: request.id)
                 resolved.apply(to: record)
-                saveRecords.append(record)
+                cancelRecords.append(record)
                 cancelled.append(resolved)
             }
 
-            // Deletions first (chunked), then the request cancellations.
-            for chunk in deleteIDs.chunked(into: 200) {
-                try await service.save(records: [], deleting: chunk)
+            try await service.save(records: cancelRecords, deleting: [service.recordID(forName: memberID)])
+
+            var dayNoteIDs: [CKRecord.ID] = []
+            for dateKey in (assignments[memberID] ?? [:]).keys {
+                dayNoteIDs.append(service.recordID(forName: DayAssignment.recordName(member: memberID, dateKey: dateKey)))
             }
-            if !saveRecords.isEmpty {
-                try await service.save(records: saveRecords)
+            for dateKey in (notes[memberID] ?? [:]).keys {
+                dayNoteIDs.append(service.recordID(forName: DayNote.recordName(member: memberID, dateKey: dateKey)))
+            }
+            for chunk in dayNoteIDs.chunked(into: 200) {
+                try await service.save(records: [], deleting: chunk)
             }
 
             members.removeAll { $0.id == memberID }
@@ -587,7 +607,7 @@ final class FamilyStore {
                 let changes = try await service.fetchZoneChanges(since: changeToken)
                 let previousStatuses = storedRequestStatuses()
                 let partnerWasJoined = family?.partnerHasJoined == true
-                let remotelyChangedDays = apply(changes)
+                let outcome = apply(changes)
                 if let token = changes.changeToken {
                     changeToken = token
                 }
@@ -600,7 +620,7 @@ final class FamilyStore {
                 } else {
                     notifyAboutChanges(
                         previousStatuses: previousStatuses,
-                        remotelyChangedDays: remotelyChangedDays,
+                        outcome: outcome,
                         partnerWasJoined: partnerWasJoined
                     )
                 }
@@ -659,10 +679,15 @@ final class FamilyStore {
         return ckError.code
     }
 
-    /// Applies fetched changes; returns "memberID|dateKey" keys whose
-    /// assignment changed remotely.
-    private func apply(_ changes: CloudKitService.ZoneChanges) -> Set<String> {
+    struct ApplyOutcome {
+        /// "memberID|dateKey" keys whose assignment changed remotely.
         var changedDays: Set<String> = []
+        var deletedMembers: [(name: String, dayCount: Int)] = []
+        var addedMemberNames: [String] = []
+    }
+
+    private func apply(_ changes: CloudKitService.ZoneChanges) -> ApplyOutcome {
+        var outcome = ApplyOutcome()
         for record in changes.changedRecords {
             if let share = record as? CKShare {
                 if myRole == .parentA, let url = share.url {
@@ -680,12 +705,13 @@ final class FamilyStore {
                         members[index] = value
                     } else {
                         members.append(value)
+                        outcome.addedMemberNames.append(value.name)
                     }
                 }
             case RecordType.dayAssignment:
                 if let value = DayAssignment(record: record) {
                     if assignments[value.memberID]?[value.dateKey] != value.owner {
-                        changedDays.insert(value.memberID + "|" + value.dateKey)
+                        outcome.changedDays.insert(value.memberID + "|" + value.dateKey)
                     }
                     assignments[value.memberID, default: [:]][value.dateKey] = value.owner
                     directAssigner[value.memberID, default: [:]][value.dateKey] = value.assignedBy
@@ -704,14 +730,29 @@ final class FamilyStore {
             let name = recordID.recordName
             switch recordType {
             case RecordType.member:
+                // A removed member must never look like ordinary day edits:
+                // capture the loss for its own loud notification and scrub
+                // their day-change entries.
+                if let existing = members.first(where: { $0.id == name }) {
+                    outcome.deletedMembers.append((existing.name, assignments[name]?.count ?? 0))
+                }
                 members.removeAll { $0.id == name }
                 assignments.removeValue(forKey: name)
                 directAssigner.removeValue(forKey: name)
                 notes.removeValue(forKey: name)
+                outcome.changedDays = outcome.changedDays.filter { !$0.hasPrefix(name + "|") }
+                // Their pending requests are doomed (cancellation records
+                // are on the way); reflect that immediately so no ghost
+                // badge lingers.
+                for index in requests.indices
+                where requests[index].memberID == name && requests[index].isPending {
+                    requests[index].status = .cancelled
+                    requests[index].resolvedAt = Date()
+                }
             case RecordType.dayAssignment:
                 if let parsed = DayAssignment.parseRecordName(name, prefix: "day-") {
                     if assignments[parsed.memberID]?[parsed.dateKey] != nil {
-                        changedDays.insert(parsed.memberID + "|" + parsed.dateKey)
+                        outcome.changedDays.insert(parsed.memberID + "|" + parsed.dateKey)
                     }
                     assignments[parsed.memberID]?.removeValue(forKey: parsed.dateKey)
                     directAssigner[parsed.memberID]?.removeValue(forKey: parsed.dateKey)
@@ -726,11 +767,20 @@ final class FamilyStore {
                 break
             }
         }
+        // Defensive orphan pruning: day/note records whose member no longer
+        // exists (e.g. a deletion that crashed halfway on the other device)
+        // must not haunt the caches.
+        if !members.isEmpty {
+            let ids = Set(members.map(\.id))
+            assignments = assignments.filter { ids.contains($0.key) }
+            directAssigner = directAssigner.filter { ids.contains($0.key) }
+            notes = notes.filter { ids.contains($0.key) }
+        }
         sortMembers()
         if selectedMember == nil { selectedMemberID = members.first?.id }
         requests.sort { $0.createdAt > $1.createdAt }
         rebuildPendingDateKeys()
-        return changedDays
+        return outcome
     }
 
     private func upsert(_ request: ChangeRequest) {
@@ -872,6 +922,16 @@ final class FamilyStore {
                 return
             }
             let memberID = serverRequest.memberID
+
+            // A request for a member that no longer exists must not be
+            // applied — it would recreate orphaned day records.
+            guard member(memberID) != nil else {
+                alert = AppAlert(
+                    title: String(localized: "Member removed"),
+                    message: String(localized: "This request concerns a child or pet that was removed, so it can't be applied.")
+                )
+                return
+            }
 
             // Skip days that changed since the request was proposed, so an
             // approval can never silently overwrite newer agreements.
@@ -1108,8 +1168,12 @@ final class FamilyStore {
     func ensureInvitationReady() async {
         guard myRole == .parentA, shareURL == nil, family != nil else { return }
         do {
-            let firstName = members.first?.name ?? ""
-            let title = String(localized: "Custody calendar for \(firstName)")
+            let title: String
+            if let firstName = members.first?.name, !firstName.isEmpty {
+                title = String(localized: "Custody calendar for \(firstName)")
+            } else {
+                title = "Nido"
+            }
             let url = try await service.createZoneAndShare(title: title)
             shareURL = url
             UserDefaults.standard.set(url.absoluteString, forKey: Keys.shareURL)
@@ -1163,7 +1227,7 @@ final class FamilyStore {
 
     private func notifyAboutChanges(
         previousStatuses: [String: String],
-        remotelyChangedDays: Set<String>,
+        outcome: ApplyOutcome,
         partnerWasJoined: Bool
     ) {
         if myRole == .parentA, !partnerWasJoined, family?.partnerHasJoined == true {
@@ -1171,6 +1235,25 @@ final class FamilyStore {
                 id: "joined-\(Int(Date().timeIntervalSince1970))",
                 title: String(localized: "Co-parent joined 🎉"),
                 body: String(localized: "\(otherName) joined the calendar. You can now plan together.")
+            )
+        }
+
+        // Member additions and removals by the co-parent are never silent.
+        for name in outcome.addedMemberNames {
+            postLocalNotification(
+                id: "member-added-\(name)-\(Int(Date().timeIntervalSince1970))",
+                title: String(localized: "Family updated"),
+                body: String(localized: "\(otherName) added \(name) to Nido.")
+            )
+        }
+        for deleted in outcome.deletedMembers {
+            let body = deleted.dayCount > 0
+                ? String(localized: "\(otherName) removed \(deleted.name)'s calendar, including \(deleted.dayCount) assigned days.")
+                : String(localized: "\(otherName) removed \(deleted.name) from Nido.")
+            postLocalNotification(
+                id: "member-removed-\(deleted.name)-\(Int(Date().timeIntervalSince1970))",
+                title: String(localized: "Calendar removed"),
+                body: body
             )
         }
 
@@ -1198,30 +1281,62 @@ final class FamilyStore {
                 )
             }
 
-            if request.requester == myRole, previous == ChangeRequest.Status.pending.rawValue, !request.isPending, request.status != .cancelled {
-                let title = request.status == .approved
-                    ? String(localized: "Request approved 🎉")
-                    : String(localized: "Request declined")
-                let body = request.status == .approved
-                    ? String(localized: "\(otherName) approved your schedule change.")
-                    : String(localized: "\(otherName) declined your schedule change.")
-                postLocalNotification(id: "resolved-\(request.id)", title: title, body: body)
+            // Transitions out of pending are only ever remote here: my own
+            // approve/decline/cancel actions pre-record their status, so
+            // they never appear as a transition. That makes it safe to
+            // notify cancellations too (e.g. a proposal that died because
+            // the co-parent removed a member).
+            if request.requester == myRole, previous == ChangeRequest.Status.pending.rawValue, !request.isPending {
+                switch request.status {
+                case .approved:
+                    postLocalNotification(
+                        id: "resolved-\(request.id)",
+                        title: String(localized: "Request approved 🎉"),
+                        body: String(localized: "\(otherName) approved your schedule change.")
+                    )
+                case .declined:
+                    postLocalNotification(
+                        id: "resolved-\(request.id)",
+                        title: String(localized: "Request declined"),
+                        body: String(localized: "\(otherName) declined your schedule change.")
+                    )
+                case .cancelled:
+                    let body: String
+                    if let memberName = member(request.memberID)?.name {
+                        body = String(localized: "Your pending request for \(memberName) was cancelled.")
+                    } else {
+                        body = String(localized: "Your pending request was cancelled.")
+                    }
+                    postLocalNotification(
+                        id: "resolved-\(request.id)",
+                        title: String(localized: "Request cancelled"),
+                        body: body
+                    )
+                case .pending:
+                    break
+                }
             }
         }
         UserDefaults.standard.set(statuses, forKey: Keys.requestStatuses)
 
         // Direct assignments made by the co-parent (not explained by any
         // request activity) also deserve a heads-up — no silent rescheduling.
-        let unexplained = remotelyChangedDays.subtracting(daysExplainedByRequests)
+        let unexplained = outcome.changedDays.subtracting(daysExplainedByRequests)
         if !unexplained.isEmpty, family?.partnerHasJoined == true {
-            let count = unexplained.count
-            var body = String(localized: "\(otherName) updated \(count) days on the calendar.")
-            if count == 1, let composite = unexplained.first {
+            var byMember: [String: [String]] = [:]
+            for composite in unexplained {
                 let parts = composite.split(separator: "|", maxSplits: 1)
-                if parts.count == 2 {
-                    let memberName = member(String(parts[0]))?.name ?? ""
-                    body = String(localized: "\(otherName) updated \(memberName)'s day \(Day.shortLabel(for: String(parts[1]))).")
-                }
+                guard parts.count == 2 else { continue }
+                byMember[String(parts[0]), default: []].append(String(parts[1]))
+            }
+            let body: String
+            if byMember.count == 1, let (memberID, dates) = byMember.first {
+                let memberName = member(memberID)?.name ?? ""
+                body = dates.count == 1
+                    ? String(localized: "\(otherName) updated \(memberName)'s day \(Day.shortLabel(for: dates[0])).")
+                    : String(localized: "\(otherName) updated \(dates.count) of \(memberName)'s days.")
+            } else {
+                body = String(localized: "\(otherName) updated \(unexplained.count) days on the calendar.")
             }
             postLocalNotification(
                 id: "days-\(Int(Date().timeIntervalSince1970))",

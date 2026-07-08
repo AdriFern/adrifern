@@ -2,7 +2,7 @@
 
 Nido is a simple, friendly iPhone app for separated parents to coordinate custody of their children — and pets:
 
-- **Multiple children & pets** — each family member has their own independent custody calendar (schedules can differ per child or pet). Switch between them with one tap; add, rename or remove members in Settings.
+- **Multiple children & pets** — each family member (up to 8) has their own independent custody calendar (schedules can differ per child or pet). Switch between them with one tap; add, rename or remove members in Settings. Removing a member permanently deletes their whole calendar and cancels their pending requests — both parents can do it, and the other parent is always notified.
 
 - **Tap-to-assign calendar** — each parent has a color; tap any unassigned day to record who has your child.
 - **Approval workflow** — moving a day to the other parent, or changing a day they recorded or that was agreed through a request, requires their approval. Proposals land in a Requests inbox with Approve / Decline buttons (or respond right on the day). Days you recorded for yourself stay yours to clear.

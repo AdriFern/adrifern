@@ -1,6 +1,17 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ added %@ to Nido.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ añadió a %2$@ a Nido."
+          }
+        }
+      }
+    },
     "%@ approved your schedule change.": {
       "extractionState": "manual",
       "localizations": {
@@ -89,6 +100,58 @@
         }
       }
     },
+    "%@ removed %@ from Nido.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ quitó a %2$@ de Nido."
+          }
+        }
+      }
+    },
+    "%@ removed %@'s calendar, including %lld assigned days.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ removed %2$@'s calendar, including 1 assigned day."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ removed %2$@'s calendar, including %3$lld assigned days."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ eliminó el calendario de %2$@, incluido 1 día asignado."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ eliminó el calendario de %2$@, incluidos %3$lld días asignados."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@ updated %@'s day %@.": {
       "extractionState": "manual",
       "localizations": {
@@ -107,6 +170,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ actualizó %2$lld días en el calendario."
+          }
+        }
+      }
+    },
+    "%@ updated %lld of %@'s days.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ updated 1 of %3$@'s days."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ updated %2$lld of %3$@'s days."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ actualizó 1 día de %3$@."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ actualizó %2$lld días de %3$@."
+                }
+              }
+            }
           }
         }
       }
@@ -569,6 +673,17 @@
         }
       }
     },
+    "Calendar removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendario eliminado"
+          }
+        }
+      }
+    },
     "Calendar unavailable": {
       "extractionState": "manual",
       "localizations": {
@@ -921,6 +1036,17 @@
         }
       }
     },
+    "Family updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Familia actualizada"
+          }
+        }
+      }
+    },
     "First turn": {
       "extractionState": "manual",
       "localizations": {
@@ -1181,6 +1307,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yo"
+          }
+        }
+      }
+    },
+    "Member removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miembro eliminado"
           }
         }
       }
@@ -1620,6 +1757,17 @@
         }
       }
     },
+    "Removed member": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miembro eliminado"
+          }
+        }
+      }
+    },
     "Repeating schedule": {
       "extractionState": "manual",
       "localizations": {
@@ -1649,6 +1797,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Solicitud aprobada 🎉"
+          }
+        }
+      }
+    },
+    "Request cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitud cancelada"
           }
         }
       }
@@ -1737,6 +1896,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Guardar cambios"
+          }
+        }
+      }
+    },
+    "Save name": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar nombre"
           }
         }
       }
@@ -1983,6 +2153,17 @@
         }
       }
     },
+    "Switch between child and pet": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar entre hijo y mascota"
+          }
+        }
+      }
+    },
     "Sync now": {
       "extractionState": "manual",
       "localizations": {
@@ -2207,6 +2388,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esto elimina permanentemente el calendario, las solicitudes y las notas para ambos progenitores."
+          }
+        }
+      }
+    },
+    "This request concerns a child or pet that was removed, so it can't be applied.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta solicitud se refiere a un hijo o una mascota que se eliminó, así que no se puede aplicar."
           }
         }
       }
@@ -2600,6 +2792,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu nombre"
+          }
+        }
+      }
+    },
+    "Your pending request for %@ was cancelled.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu solicitud pendiente para %@ se canceló."
+          }
+        }
+      }
+    },
+    "Your pending request was cancelled.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu solicitud pendiente se canceló."
           }
         }
       }
