@@ -78,6 +78,14 @@ struct SettingsView: View {
                     }
                 }
             }
+            if store.pendingJoinFamilyID != nil {
+                NavigationLink {
+                    JoinProfileView()
+                } label: {
+                    Label("Finish joining", systemImage: "person.crop.circle.badge.clock")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
             Button {
                 showAddFamily = true
             } label: {
@@ -437,6 +445,16 @@ private struct AddMemberSheet: View {
         targetFamilyID ?? store.familyRefs.first?.id
     }
 
+    /// Label a family by its co-parent, or by its members while the
+    /// co-parent hasn't joined (so two solo families stay distinguishable).
+    private func familyLabel(_ familyRef: FamilyRef) -> String {
+        guard let family = store.family(familyRef.id) else { return "…" }
+        if family.partnerHasJoined || familyRef.role == .parentB {
+            return family.name(of: familyRef.role.other)
+        }
+        return store.membersOf(familyRef.id).first?.name ?? String(localized: "Waiting for your co-parent")
+    }
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 22) {
@@ -470,7 +488,7 @@ private struct AddMemberSheet: View {
                             set: { targetFamilyID = $0 }
                         )) {
                             ForEach(store.familyRefs) { familyRef in
-                                Text(store.family(familyRef.id)?.name(of: familyRef.role.other) ?? "")
+                                Text(familyLabel(familyRef))
                                     .tag(familyRef.id)
                             }
                         }

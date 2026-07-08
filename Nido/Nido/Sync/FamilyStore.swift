@@ -202,10 +202,41 @@ final class FamilyStore {
         }
     }
 
+    /// Installs from before multi-family stored one implicit family in flat
+    /// keys and the fixed zone "FamilyZone". Synthesize its FamilyRef and
+    /// carry the per-family state over so the update never looks like a wipe.
+    private func migrateLegacySingleFamilyIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard familyRefs.isEmpty, defaults.bool(forKey: "nido.setupComplete") else { return }
+        let role = ParentRole(rawValue: defaults.string(forKey: "nido.role") ?? "A") ?? .parentA
+        let ownerName = defaults.string(forKey: "nido.zoneOwnerName")
+        let legacy = FamilyRef(
+            role: role,
+            zoneName: "FamilyZone",
+            zoneOwnerName: role == .parentA ? nil : ownerName
+        )
+        familyRefs = [legacy]
+        persistRefs()
+        if let token = defaults.data(forKey: "nido.changeToken") {
+            defaults.set(token, forKey: Keys.changeToken(legacy.id))
+        }
+        if let urlString = defaults.string(forKey: "nido.shareURL") {
+            defaults.set(urlString, forKey: Keys.shareURL(legacy.id))
+            shareURLs[legacy.id] = URL(string: urlString)
+        }
+        if defaults.bool(forKey: "nido.shareLocked") {
+            defaults.set(true, forKey: Keys.shareLocked(legacy.id))
+        }
+        for key in ["nido.setupComplete", "nido.role", "nido.zoneOwnerName", "nido.changeToken", "nido.shareURL", "nido.shareLocked", "nido.joinNeedsProfile"] {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     // MARK: - Bootstrap
 
     func bootstrap() async {
         guard phase == .loading else { return }
+        migrateLegacySingleFamilyIfNeeded()
         if familyRefs.isEmpty {
             phase = .onboarding
             return
@@ -334,7 +365,7 @@ final class FamilyStore {
         }
         persistRefs()
 
-        let synced = await refresh(silent: true)
+        let synced = await syncFamilies(familyRefs)
         if !synced && families.isEmpty {
             // Zones exist but couldn't be loaded — a transient failure must
             // not read as "nothing to restore".
@@ -382,7 +413,7 @@ final class FamilyStore {
         // Tapping an invitation for a family we're already part of is just
         // a rejoin of that one family.
         if let existing = ref(incomingRef.id) {
-            await refresh(silent: true)
+            await syncFamilies([existing])
             if isProfileComplete(existing) {
                 phase = .ready
             } else {
@@ -420,7 +451,7 @@ final class FamilyStore {
         familyRefs.append(incomingRef)
         persistRefs()
         UserDefaults.standard.removeObject(forKey: Keys.changeToken(incomingRef.id))
-        await refresh(silent: true)
+        await syncFamilies([incomingRef])
 
         guard let joined = families[incomingRef.id] else {
             // Couldn't load the new family — back out cleanly.
@@ -483,6 +514,19 @@ final class FamilyStore {
         }
     }
 
+    /// Declines a join that hasn't been completed: leaves the share and
+    /// forgets the family. The invitation link keeps working, so joining
+    /// again later is always possible.
+    func abandonJoin() async {
+        guard let familyID = pendingJoinFamilyID else { return }
+        if let joinRef = ref(familyID) {
+            try? await service.deleteZone(in: service.handle(for: joinRef))
+            removeFamilyLocally(familyID)
+        }
+        pendingJoinFamilyID = nil
+        if familyRefs.isEmpty { phase = .onboarding }
+    }
+
     /// Second step of joining: the invited parent sets their name and color
     /// for the family they just joined.
     func completeJoin(myName: String, colorHex: String) async -> Bool {
@@ -525,6 +569,7 @@ final class FamilyStore {
     }
 
     private func finishSetupSideEffects() async {
+        await service.deleteLegacyZoneSubscription()
         for ref in familyRefs where ref.role == .parentA {
             try? await service.saveZoneSubscription(zoneName: ref.zoneName)
         }
@@ -671,7 +716,7 @@ final class FamilyStore {
         let previousStatuses = storedRequestStatuses()
         var outcomes: [(familyID: String, outcome: ApplyOutcome)] = []
         var partnerWasJoined: [String: Bool] = [:]
-        var anyInitialSync = false
+        var initialSyncFamilyIDs: Set<String> = []
         var allOK = true
 
         for familyRef in familyRefs {
@@ -680,7 +725,7 @@ final class FamilyStore {
             switch result {
             case .success(let outcome, let wasInitial):
                 outcomes.append((familyRef.id, outcome))
-                if wasInitial { anyInitialSync = true }
+                if wasInitial { initialSyncFamilyIDs.insert(familyRef.id) }
             case .gone:
                 allOK = false
             case .failed:
@@ -691,19 +736,33 @@ final class FamilyStore {
         lastSyncedAt = Date()
         rebuildDerived()
         saveCache()
-        if anyInitialSync && previousStatuses.isEmpty {
-            // First sync on this device: record state without a
-            // notification storm for pre-existing requests.
-            recordAllRequestStatuses()
-        } else {
-            notifyAboutChanges(
-                previousStatuses: previousStatuses,
-                outcomes: outcomes,
-                partnerWasJoined: partnerWasJoined
-            )
-        }
+        // A family's FIRST sync on this device (fresh install, upgrade,
+        // rejoin, added family) records its pre-existing state quietly —
+        // suppression is per family, so established families still notify.
+        notifyAboutChanges(
+            previousStatuses: previousStatuses,
+            outcomes: outcomes,
+            partnerWasJoined: partnerWasJoined,
+            initialSyncFamilyIDs: initialSyncFamilyIDs
+        )
         await lockSharesIfNeeded()
         return allOK
+    }
+
+    /// Syncs specific families outside the global refresh (bypasses the
+    /// isSyncing re-entrancy guard, so a background refresh in flight can
+    /// never make a just-accepted share look unreachable).
+    @discardableResult
+    private func syncFamilies(_ refs: [FamilyRef]) async -> Bool {
+        var anyOK = false
+        for familyRef in refs {
+            if case .success = await refreshFamily(familyRef, silent: true) {
+                anyOK = true
+            }
+        }
+        rebuildDerived()
+        saveCache()
+        return anyOK
     }
 
     private enum FamilyRefreshResult {
@@ -736,6 +795,11 @@ final class FamilyStore {
                 if code == .zoneNotFound || code == .userDeletedZone {
                     handleFamilyGone(familyRef)
                     return .gone
+                }
+                if retriedAfterTokenReset {
+                    // The full refetch after a token reset failed; restore
+                    // the cached data so this family isn't shown empty.
+                    loadCache()
                 }
                 if !silent { presentError(error) }
                 return .failed
@@ -1370,20 +1434,13 @@ final class FamilyStore {
         UserDefaults.standard.set(statuses, forKey: Keys.requestStatuses)
     }
 
-    private func recordAllRequestStatuses() {
-        var statuses: [String: String] = [:]
-        for request in requests {
-            statuses[request.id] = request.status.rawValue
-        }
-        UserDefaults.standard.set(statuses, forKey: Keys.requestStatuses)
-    }
-
     private func notifyAboutChanges(
         previousStatuses: [String: String],
         outcomes: [(familyID: String, outcome: ApplyOutcome)],
-        partnerWasJoined: [String: Bool]
+        partnerWasJoined: [String: Bool],
+        initialSyncFamilyIDs: Set<String>
     ) {
-        for (familyID, outcome) in outcomes {
+        for (familyID, outcome) in outcomes where !initialSyncFamilyIDs.contains(familyID) {
             let coParent = families[familyID]?.name(of: myRole(in: familyID).other) ?? String(localized: "Co-parent")
 
             if myRole(in: familyID) == .parentA,
@@ -1429,7 +1486,8 @@ final class FamilyStore {
                 daysExplainedByRequests.formUnion(request.changes.map { request.memberID + "|" + $0.dateKey })
             }
 
-            if !mine, request.isPending, previous == nil {
+            if !mine, request.isPending, previous == nil,
+               !initialSyncFamilyIDs.contains(request.familyID) {
                 let count = request.changes.count
                 let memberName = member(request.memberID)?.name ?? ""
                 let body = count == 1
@@ -1445,7 +1503,8 @@ final class FamilyStore {
             // Transitions out of pending are only ever remote here: my own
             // approve/decline/cancel actions pre-record their status, so
             // they never appear as a transition.
-            if mine, previous == ChangeRequest.Status.pending.rawValue, !request.isPending {
+            if mine, previous == ChangeRequest.Status.pending.rawValue, !request.isPending,
+               !initialSyncFamilyIDs.contains(request.familyID) {
                 switch request.status {
                 case .approved:
                     postLocalNotification(
@@ -1480,7 +1539,7 @@ final class FamilyStore {
 
         // Direct assignments made by a co-parent (not explained by any
         // request activity) also deserve a heads-up — no silent rescheduling.
-        for (familyID, outcome) in outcomes {
+        for (familyID, outcome) in outcomes where !initialSyncFamilyIDs.contains(familyID) {
             guard families[familyID]?.partnerHasJoined == true else { continue }
             let coParent = families[familyID]?.name(of: myRole(in: familyID).other) ?? ""
             let unexplained = outcome.changedDays.subtracting(daysExplainedByRequests)

@@ -481,7 +481,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una familia es un progenitor más los hijos o mascotas que compartes con esa persona. Las familias son totalmente independientes: la otra familia nunca ve nada."
+            "value": "Una familia es el otro progenitor más los hijos o mascotas que compartes con esa persona. Las familias son totalmente independientes: la otra familia nunca ve nada."
           }
         }
       }
@@ -959,6 +959,28 @@
         }
       }
     },
+    "Decline invitation": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechazar la invitación"
+          }
+        }
+      }
+    },
+    "Decline this invitation?": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Rechazar esta invitación?"
+          }
+        }
+      }
+    },
     "Declined": {
       "extractionState": "manual",
       "localizations": {
@@ -999,6 +1021,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Eliminar este calendario compartido?"
+          }
+        }
+      }
+    },
+    "Don't join": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No unirme"
           }
         }
       }
@@ -1098,6 +1131,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Familia actualizada"
+          }
+        }
+      }
+    },
+    "Finish joining": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar de unirme"
           }
         }
       }
@@ -2715,6 +2759,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puedes dejar este día sin asignar, pero pasárselo a %@ necesita su aprobación."
+          }
+        }
+      }
+    },
+    "You can join again later with a new invitation link.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrás unirte más adelante con un nuevo enlace de invitación."
           }
         }
       }

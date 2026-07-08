@@ -212,9 +212,11 @@ struct CreateFamilyView: View {
 
 struct JoinProfileView: View {
     @Environment(FamilyStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     @State private var myName = ""
     @State private var colorHex = Palette.defaultB
     @State private var isSaving = false
+    @State private var confirmDecline = false
 
     private var takenColor: String? { store.pendingJoinFamily?.colorA }
 
@@ -292,6 +294,29 @@ struct JoinProfileView: View {
             .padding(24)
         }
         .background(Theme.background)
+        .toolbar {
+            // A wrong or unwanted invitation must always be refusable —
+            // joining is consent, never an obligation.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Don't join") { confirmDecline = true }
+                    .foregroundStyle(.red)
+            }
+        }
+        .confirmationDialog(
+            Text("Decline this invitation?"),
+            isPresented: $confirmDecline,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Decline invitation"), role: .destructive) {
+                Task {
+                    await store.abandonJoin()
+                    dismiss()
+                }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("You can join again later with a new invitation link.")
+        }
         .onAppear {
             if let taken = takenColor, colorHex == taken {
                 colorHex = Palette.options.first { $0 != taken } ?? Palette.defaultB

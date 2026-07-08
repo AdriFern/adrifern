@@ -5,6 +5,7 @@ import SwiftUI
 /// Used both at the end of onboarding and from Settings.
 struct InviteView: View {
     @Environment(FamilyStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     var familyID: String
     var isOnboarding: Bool
 
@@ -54,6 +55,15 @@ struct InviteView: View {
                         store.enterApp()
                     } label: {
                         Text("Go to the calendar")
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
+                } else {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Done")
                     }
                     .buttonStyle(SecondaryButtonStyle())
                     .padding(.horizontal, 24)

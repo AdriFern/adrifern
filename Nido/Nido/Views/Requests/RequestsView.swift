@@ -124,6 +124,14 @@ struct RequestRow: View {
                 }
             }
 
+            // With several families, spell out which co-parent this
+            // involves — member names alone can repeat across families.
+            if store.familyRefs.count > 1 {
+                Text("With \(store.otherPartyName(of: request))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
             changesList
 
             if request.kind == .pattern {

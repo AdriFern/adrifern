@@ -90,8 +90,8 @@ final class CloudKitService {
     func listFamilyZones() async throws -> (owned: [CKRecordZone], shared: [CKRecordZone]) {
         let owned = try await container.privateCloudDatabase.allRecordZones()
             .filter { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) }
-        let shared = (try? await container.sharedCloudDatabase.allRecordZones())?
-            .filter { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) } ?? []
+        let shared = try await container.sharedCloudDatabase.allRecordZones()
+            .filter { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) }
         return (owned, shared)
     }
 
@@ -256,6 +256,12 @@ final class CloudKitService {
         let subscription = CKRecordZoneSubscription(zoneID: zoneID, subscriptionID: "nido-zone-\(zoneName)")
         subscription.notificationInfo = Self.notificationInfo
         _ = try await container.privateCloudDatabase.save(subscription)
+    }
+
+    /// Removes the subscription id used before multi-family support so the
+    /// legacy zone doesn't push twice after an upgrade.
+    func deleteLegacyZoneSubscription() async {
+        _ = try? await container.privateCloudDatabase.deleteSubscription(withID: "nido-zone-changes")
     }
 
     /// Participant side: one database subscription covers every shared zone.

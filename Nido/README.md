@@ -70,7 +70,7 @@ Nido/
 
 ## Privacy & security
 
-- All data is stored in the **calendar creator's private iCloud database**, one dedicated record zone per family, each shared through CloudKit with exactly that family's co-parent. Different families are cryptographically separate shares — no cross-visibility is possible.
+- All data is stored in the **calendar creator's private iCloud database**, one dedicated record zone per family, each shared through CloudKit with exactly that family's co-parent. Different families are isolated CloudKit zones and shares — iCloud only grants each co-parent access to their own family's zone, so no cross-visibility is possible.
 - The invitation link is the only way in. Once your co-parent joins, the share's public permission is revoked on iCloud, so the link goes dead for everyone else; rejoining from the same iCloud account remains possible. Before the join happens, treat the link like a house key and send it directly to your co-parent only.
 - The calendar creator can disconnect the co-parent at any time (Settings → Remove co-parent). Their access is revoked immediately, the old invitation link is permanently destroyed, and a fresh link is minted the next time the invitation screen is opened — the calendar and its history stay.
 - Apple's CloudKit handles authentication (iCloud accounts), encryption in transit, and at rest.
