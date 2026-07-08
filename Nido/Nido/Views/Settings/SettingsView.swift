@@ -551,7 +551,7 @@ struct AddFamilySheet: View {
                     .padding(.horizontal, 8)
 
                 NavigationLink {
-                    CreateFamilyView(isAdditional: true)
+                    CreateFamilyView(isAdditional: true, onFinished: { dismiss() })
                 } label: {
                     Text("Set up a new calendar")
                 }

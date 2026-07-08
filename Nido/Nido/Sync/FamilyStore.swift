@@ -217,9 +217,11 @@ final class FamilyStore {
         )
         familyRefs = [legacy]
         persistRefs()
-        if let token = defaults.data(forKey: "nido.changeToken") {
-            defaults.set(token, forKey: Keys.changeToken(legacy.id))
-        }
+        // The legacy change token is deliberately NOT carried over: the old
+        // on-disk cache can't be decoded either, so a carried token would
+        // fetch an empty delta into empty state — a wipe. Starting with no
+        // token forces one full (and quiet — initial-sync suppression)
+        // refetch that rebuilds everything.
         if let urlString = defaults.string(forKey: "nido.shareURL") {
             defaults.set(urlString, forKey: Keys.shareURL(legacy.id))
             shareURLs[legacy.id] = URL(string: urlString)
@@ -253,6 +255,14 @@ final class FamilyStore {
             phase = .ready
         }
         await refresh(silent: true)
+        // The first sync may reveal that a join thought incomplete (e.g.
+        // right after migration, before the family record was in memory)
+        // was in fact finished — don't strand the user in the join flow.
+        if let pending = pendingJoinFamilyID,
+           let pendingRef = ref(pending), isProfileComplete(pendingRef) {
+            pendingJoinFamilyID = nil
+            phase = .ready
+        }
     }
 
     /// My side of the profile is filled in for this family.
@@ -520,6 +530,12 @@ final class FamilyStore {
     func abandonJoin() async {
         guard let familyID = pendingJoinFamilyID else { return }
         if let joinRef = ref(familyID) {
+            // Only a joined (shared) zone may be left this way — deleting
+            // an owned zone would destroy the user's own calendar.
+            guard joinRef.role == .parentB else {
+                pendingJoinFamilyID = nil
+                return
+            }
             try? await service.deleteZone(in: service.handle(for: joinRef))
             removeFamilyLocally(familyID)
         }
@@ -762,6 +778,14 @@ final class FamilyStore {
         }
         rebuildDerived()
         saveCache()
+        // This path bypasses notifyAboutChanges, so record the statuses of
+        // any requests it just pulled in — otherwise the next regular
+        // refresh would announce pre-existing requests as brand new.
+        var statuses = storedRequestStatuses()
+        for request in requests where statuses[request.id] == nil {
+            statuses[request.id] = request.status.rawValue
+        }
+        UserDefaults.standard.set(statuses, forKey: Keys.requestStatuses)
         return anyOK
     }
 
@@ -774,6 +798,7 @@ final class FamilyStore {
     private func refreshFamily(_ familyRef: FamilyRef, silent: Bool) async -> FamilyRefreshResult {
         let handle = service.handle(for: familyRef)
         var retriedAfterTokenReset = false
+        var preResetSlice: FamilySlice?
         while true {
             let token = changeToken(for: familyRef.id)
             let isInitialSync = token == nil
@@ -788,6 +813,7 @@ final class FamilyStore {
                 let code = Self.normalizedCKErrorCode(error)
                 if code == .changeTokenExpired, !retriedAfterTokenReset {
                     retriedAfterTokenReset = true
+                    preResetSlice = sliceOfFamily(familyRef.id)
                     setChangeToken(nil, for: familyRef.id)
                     clearFamilyData(familyRef.id)
                     continue
@@ -796,15 +822,54 @@ final class FamilyStore {
                     handleFamilyGone(familyRef)
                     return .gone
                 }
-                if retriedAfterTokenReset {
-                    // The full refetch after a token reset failed; restore
-                    // the cached data so this family isn't shown empty.
-                    loadCache()
+                if retriedAfterTokenReset, let slice = preResetSlice {
+                    // The full refetch after a token reset failed; put back
+                    // this family's data so it isn't shown empty. Scoped to
+                    // this family only — a global cache reload would revert
+                    // other families' deltas already applied this pass.
+                    restoreFamilySlice(slice, familyID: familyRef.id)
                 }
                 if !silent { presentError(error) }
                 return .failed
             }
         }
+    }
+
+    /// In-memory snapshot of one family's slice of the store, used to roll
+    /// back a failed token-reset refetch without touching other families.
+    private struct FamilySlice {
+        var family: Family?
+        var members: [String: Member]
+        var assignments: [String: [String: ParentRole]]
+        var directAssigner: [String: [String: ParentRole]]
+        var notes: [String: [String: String]]
+        var requests: [ChangeRequest]
+    }
+
+    private func sliceOfFamily(_ familyID: String) -> FamilySlice {
+        let memberIDs = Set(memberFamily.filter { $0.value == familyID }.map(\.key))
+        return FamilySlice(
+            family: families[familyID],
+            members: membersByID.filter { memberIDs.contains($0.key) },
+            assignments: assignments.filter { memberIDs.contains($0.key) },
+            directAssigner: directAssigner.filter { memberIDs.contains($0.key) },
+            notes: notes.filter { memberIDs.contains($0.key) },
+            requests: requests.filter { $0.familyID == familyID }
+        )
+    }
+
+    private func restoreFamilySlice(_ slice: FamilySlice, familyID: String) {
+        if let family = slice.family { families[familyID] = family }
+        for (memberID, member) in slice.members {
+            membersByID[memberID] = member
+            memberFamily[memberID] = familyID
+        }
+        for (memberID, value) in slice.assignments { assignments[memberID] = value }
+        for (memberID, value) in slice.directAssigner { directAssigner[memberID] = value }
+        for (memberID, value) in slice.notes { notes[memberID] = value }
+        requests.removeAll { $0.familyID == familyID }
+        requests.append(contentsOf: slice.requests)
+        rebuildDerived()
     }
 
     /// Once a family's co-parent has joined, kill that invitation link at

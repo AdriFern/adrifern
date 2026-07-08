@@ -94,6 +94,10 @@ struct CreateFamilyView: View {
     @Environment(FamilyStore.self) private var store
     /// True when adding another family from Settings (not first onboarding).
     var isAdditional = false
+    /// Closes the presenting sheet once the invite step is done (Settings
+    /// flow only) — returning to a re-enabled "Create calendar" would
+    /// invite an accidental duplicate family.
+    var onFinished: (() -> Void)? = nil
     @State private var myName = ""
     @State private var childName = ""
     @State private var childKind: Member.Kind = .child
@@ -205,6 +209,11 @@ struct CreateFamilyView: View {
                 }
             }
         }
+        .onChange(of: showInvite) { _, isShowing in
+            if !isShowing, createdFamilyID != nil {
+                onFinished?()
+            }
+        }
     }
 }
 
@@ -274,11 +283,14 @@ struct JoinProfileView: View {
                 Button {
                     Task {
                         isSaving = true
-                        _ = await store.completeJoin(
+                        let joined = await store.completeJoin(
                             myName: myName.trimmingCharacters(in: .whitespaces),
                             colorHex: colorHex
                         )
                         isSaving = false
+                        // In the Settings "Finish joining" push this view
+                        // doesn't disappear on its own — pop it.
+                        if joined { dismiss() }
                     }
                 } label: {
                     if isSaving {
