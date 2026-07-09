@@ -110,7 +110,7 @@ struct CalendarView: View {
                                         .font(.subheadline.weight(.semibold))
                                 }
                             }
-                            .accessibilityLabel(Text("Set up a repeating schedule"))
+                            .accessibilityLabel(Text("Schedule options"))
                         } else {
                             Button {
                                 showPattern = true

@@ -284,6 +284,14 @@ struct FamilySettingsView: View {
         return myName != family.name(of: myRole) || myColor != family.colorHex(of: myRole)
     }
 
+    /// Any in-progress edit (profile or WhatsApp) that a remote sync
+    /// must not clobber by reloading the form.
+    private var hasUnsavedEdits: Bool {
+        guard let family else { return false }
+        return hasProfileChanges
+            || myWhatsApp.trimmingCharacters(in: .whitespaces) != family.whatsApp(of: myRole)
+    }
+
     var body: some View {
         List {
             profileSection
@@ -298,7 +306,7 @@ struct FamilySettingsView: View {
         .onChange(of: family) { _, _ in
             // Refresh the form from a sync only when the user isn't
             // mid-edit, so their typing is never discarded.
-            if !hasProfileChanges { loadFromFamily(force: true) }
+            if !hasUnsavedEdits { loadFromFamily(force: true) }
         }
         .sheet(isPresented: $showInvite) {
             NavigationStack {

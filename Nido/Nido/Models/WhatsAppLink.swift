@@ -20,7 +20,7 @@ enum WhatsAppLink {
     static func requestMessage(memberName: String, changes: [DayChange], isPattern: Bool) -> String {
         let count = changes.count
         if isPattern {
-            return String(localized: "I've sent you a repeating-schedule proposal for \(memberName) in Nido, covering \(count) days. Open Nido to review and approve it. 🪺")
+            return String(localized: "I've sent you a repeating-schedule proposal for \(memberName) in Nido, covering \(count) days. Open Nido to approve or decline it. 🪺")
         }
         if count == 1, let only = changes.first {
             return String(localized: "I've proposed a change for \(memberName) in Nido: \(Day.shortLabel(for: only.dateKey)). Open Nido to approve or decline it. 🪺")

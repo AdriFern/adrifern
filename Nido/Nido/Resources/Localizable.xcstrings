@@ -1594,12 +1594,12 @@
         }
       }
     },
-    "I've sent you a repeating-schedule proposal for %@ in Nido, covering %lld days. Open Nido to review and approve it. 🪺" : {
+    "I've sent you a repeating-schedule proposal for %@ in Nido, covering %lld days. Open Nido to approve or decline it. 🪺" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Te he enviado en Nido una propuesta de plan recurrente para %1$@, con %2$lld días. Abre Nido para revisarla y aprobarla. 🪺"
+            "value" : "Te he enviado en Nido una propuesta de plan recurrente para %1$@, con %2$lld días. Abre Nido para aprobarla o rechazarla. 🪺"
           }
         }
       }
@@ -2000,6 +2000,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aún no hay solicitudes"
+          }
+        }
+      }
+    },
+    "Not enough assigned days yet to check the balance." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay suficientes días asignados para comprobar el equilibrio."
           }
         }
       }
@@ -2641,6 +2651,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plan para %@"
+          }
+        }
+      }
+    },
+    "Schedule options" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones de plan"
           }
         }
       }

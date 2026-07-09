@@ -23,11 +23,16 @@ struct StatsView: View {
 
                     yearPicker
 
-                    if let family = store.selectedMember.flatMap({ store.context($0.id)?.family }) {
-                        yearSummaryCard(family: family)
-                        monthSummaryCard(family: family)
-                        equityCard(family: family)
-                        monthlyBreakdownCard(family: family)
+                    if let ctx = store.selectedMember.flatMap({ store.context($0.id) }) {
+                        yearSummaryCard(family: ctx.family)
+                        monthSummaryCard(family: ctx.family)
+                        // Fairness only means something between two real
+                        // parents — solo calendars would compare against
+                        // a placeholder.
+                        if ctx.partnerJoined {
+                            equityCard(family: ctx.family)
+                        }
+                        monthlyBreakdownCard(family: ctx.family)
                     }
                 }
                 .padding(20)
@@ -35,6 +40,11 @@ struct StatsView: View {
             .background(Theme.background)
             .navigationTitle(Text("Stats"))
             .onChange(of: store.selectedMember?.id) { _, _ in
+                aiSummary = nil
+            }
+            .onChange(of: store.lastSyncedAt) { _, _ in
+                // The numbers may have moved; a retold paragraph must
+                // never outlive the facts it retold.
                 aiSummary = nil
             }
         }
@@ -228,6 +238,14 @@ struct StatsView: View {
         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
     }
 
+    private func iconColor(for kind: EquityAnalysis.Insight.Kind) -> Color {
+        switch kind {
+        case .balanced: .green
+        case .insufficient: .secondary
+        case .weekends, .recentTilt, .streak: .accentColor
+        }
+    }
+
     private func summarize(_ facts: String) {
         Task {
             isSummarizing = true
@@ -251,7 +269,7 @@ struct StatsView: View {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: insight.symbolName)
                         .font(.subheadline)
-                        .foregroundStyle(insight.kind == .balanced ? Color.green : Color.accentColor)
+                        .foregroundStyle(iconColor(for: insight.kind))
                         .frame(width: 22)
                     Text(insight.text)
                         .font(.subheadline)

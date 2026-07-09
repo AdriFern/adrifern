@@ -7,7 +7,7 @@ import Foundation
 enum EquityAnalysis {
     struct Insight: Identifiable {
         enum Kind {
-            case balanced, weekends, recentTilt, streak
+            case balanced, weekends, recentTilt, streak, insufficient
         }
         let kind: Kind
         let text: String
@@ -19,6 +19,7 @@ enum EquityAnalysis {
             case .weekends: "sun.max.fill"
             case .recentTilt: "chart.line.uptrend.xyaxis"
             case .streak: "flame.fill"
+            case .insufficient: "hourglass"
             }
         }
     }
@@ -34,11 +35,11 @@ enum EquityAnalysis {
         let calendar = Day.calendar
         let start = calendar.date(byAdding: .day, value: -55, to: now) ?? now
         var weekendA = 0, weekendB = 0
+        var assignedInWindow = 0
         for key in Day.keys(from: start, to: now) {
-            guard let owner = assignments[key],
-                  let date = Day.date(from: key),
-                  calendar.isDateInWeekend(date)
-            else { continue }
+            guard let owner = assignments[key] else { continue }
+            assignedInWindow += 1
+            guard let date = Day.date(from: key), calendar.isDateInWeekend(date) else { continue }
             if owner == .parentA { weekendA += 1 } else { weekendB += 1 }
         }
         let weekendTotal = weekendA + weekendB
@@ -98,10 +99,19 @@ enum EquityAnalysis {
         }
 
         if result.isEmpty {
-            result.append(Insight(
-                kind: .balanced,
-                text: String(localized: "No notable imbalances in the last 8 weeks — the split looks balanced.")
-            ))
+            // Never issue a "balanced" verdict the data can't support —
+            // a vacuous all-clear is as weaponizable as a false alarm.
+            if assignedInWindow < 14 {
+                result.append(Insight(
+                    kind: .insufficient,
+                    text: String(localized: "Not enough assigned days yet to check the balance.")
+                ))
+            } else {
+                result.append(Insight(
+                    kind: .balanced,
+                    text: String(localized: "No notable imbalances in the last 8 weeks — the split looks balanced.")
+                ))
+            }
         }
         return result
     }
