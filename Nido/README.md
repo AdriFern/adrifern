@@ -14,6 +14,7 @@ Nido is a simple, friendly iPhone app for separated parents to coordinate custod
 - **Private by design** — data lives in the creator's private iCloud and is shared via CloudKit sharing. Once your co-parent joins, the invitation link is closed at the iCloud level (on the creator's next sync — usually within moments) so nobody else can use it. Until then, treat it like a house key and send it only to your co-parent. No third-party servers, no accounts, no subscription.
 - **Invitations by QR code or link** — the co-parent scans a QR code or taps a link to join.
 - **Reinstall-proof** — "Restore an existing calendar" reconnects either parent after a new phone or reinstall.
+- **Built-in help** — Settings ▸ Help & FAQ is a searchable, simplified manual (25 questions across getting started, calendar rules, requests, schedules, families, and troubleshooting) so either parent can answer "how do I…?" without leaving the app.
 - **English + Spanish**, following the iPhone's language automatically.
 
 ## Requirements
