@@ -187,6 +187,7 @@ struct RequestRow: View {
                         Text("Cancel request")
                             .font(.subheadline)
                     }
+                    .buttonStyle(.borderless)
                     .disabled(isWorking)
 
                     Spacer()
