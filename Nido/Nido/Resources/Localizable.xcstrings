@@ -1509,7 +1509,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En el iCloud privado de quien creó el calendario, compartido mediante la compartición de iCloud de Apple con exactamente un co-progenitor por familia. Sin cuentas, sin servidores de terceros y sin ninguna analítica."
+            "value" : "En el iCloud privado de quien creó el calendario, compartido mediante la compartición de iCloud de Apple con una única persona por familia: el otro progenitor. Sin cuentas, sin servidores de terceros y sin ninguna analítica."
           }
         }
       }
@@ -1961,12 +1961,12 @@
         }
       }
     },
-    "Open Settings → Families → the family → “Remove co-parent”. Their access ends immediately and the old invitation link is destroyed; a fresh link is created the next time you open the invitation screen. The calendar and its history stay." : {
+    "Open Settings → Families → the family → “Remove co-parent…”. Their access ends immediately and the old invitation link is destroyed; a fresh link is created the next time you open the invitation screen. The calendar and its history stay." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Ajustes → Familias → la familia → «Quitar al otro progenitor». Su acceso termina de inmediato y el enlace de invitación antiguo se destruye; la próxima vez que abras la pantalla de invitación se creará uno nuevo. El calendario y su historial se conservan."
+            "value" : "Abre Ajustes → Familias → la familia → «Quitar al otro progenitor…». Su acceso termina de inmediato y el enlace de invitación antiguo se destruye; la próxima vez que abras la pantalla de invitación se creará uno nuevo. El calendario y su historial se conservan."
           }
         }
       }
@@ -2726,12 +2726,12 @@
         }
       }
     },
-    "Tap any empty day and choose a parent. Empty days can be filled in by either of you — the other parent gets a notification and can clear the day with one tap if they disagree." : {
+    "Tap any empty day and choose a parent. Empty days can be filled in by either of you — the other parent gets a notification, and a day recorded for them can be cleared by them with one tap. A day someone records for themselves only changes through a proposal." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toca cualquier día vacío y elige un progenitor. Los días vacíos puede rellenarlos cualquiera de los dos: el otro progenitor recibe un aviso y puede dejar el día sin asignar con un toque si no está de acuerdo."
+            "value" : "Toca cualquier día vacío y elige un progenitor. Los días vacíos puede rellenarlos cualquiera de los dos: el otro progenitor recibe un aviso y, si el día se registró para él, puede dejarlo sin asignar con un solo toque. Un día que alguien registra para sí mismo solo cambia mediante una propuesta."
           }
         }
       }
@@ -3305,7 +3305,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sí. Ajustes → Familias → «Añadir otra familia» crea un segundo calendario completamente separado, con su propio co-progenitor y su propia invitación. Las solicitudes indican siempre a qué co-progenitor corresponden."
+            "value" : "Sí. Ajustes → Familias → «Añadir otra familia» crea un segundo calendario completamente separado, con su propia invitación y con el otro progenitor de esa familia. Las solicitudes indican siempre a qué progenitor corresponden."
           }
         }
       }

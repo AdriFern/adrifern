@@ -105,7 +105,7 @@ private extension HelpView {
             FAQSection(title: String(localized: "The calendar"), items: [
                 FAQItem(
                     question: String(localized: "How do I record who has our child on a day?"),
-                    answer: String(localized: "Tap any empty day and choose a parent. Empty days can be filled in by either of you — the other parent gets a notification and can clear the day with one tap if they disagree.")
+                    answer: String(localized: "Tap any empty day and choose a parent. Empty days can be filled in by either of you — the other parent gets a notification, and a day recorded for them can be cleared by them with one tap. A day someone records for themselves only changes through a proposal.")
                 ),
                 FAQItem(
                     question: String(localized: "Why do some days say “Needs approval”?"),
@@ -171,7 +171,7 @@ private extension HelpView {
                 ),
                 FAQItem(
                     question: String(localized: "How do I disconnect my co-parent?"),
-                    answer: String(localized: "Open Settings → Families → the family → “Remove co-parent”. Their access ends immediately and the old invitation link is destroyed; a fresh link is created the next time you open the invitation screen. The calendar and its history stay.")
+                    answer: String(localized: "Open Settings → Families → the family → “Remove co-parent…”. Their access ends immediately and the old invitation link is destroyed; a fresh link is created the next time you open the invitation screen. The calendar and its history stay.")
                 ),
                 FAQItem(
                     question: String(localized: "How do I leave a calendar I joined?"),
