@@ -52,6 +52,10 @@ struct Family: Codable, Equatable, Sendable {
     var nameB: String
     var colorA: String
     var colorB: String
+    /// Optional WhatsApp numbers each parent chooses to share, so the
+    /// other side can open a chat with one tap. Empty = not shared.
+    var whatsAppA: String
+    var whatsAppB: String
 
     static let recordName = "family"
 
@@ -70,6 +74,27 @@ struct Family: Codable, Equatable, Sendable {
         role == .parentA ? colorA : colorB
     }
 
+    func whatsApp(of role: ParentRole) -> String {
+        role == .parentA ? whatsAppA : whatsAppB
+    }
+
+    // MARK: Codable (tolerant: caches written before new fields existed
+    // must keep decoding — a thrown error here would blank the app).
+
+    private enum CodingKeys: String, CodingKey {
+        case nameA, nameB, colorA, colorB, whatsAppA, whatsAppB
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        nameA = try container.decodeIfPresent(String.self, forKey: .nameA) ?? ""
+        nameB = try container.decodeIfPresent(String.self, forKey: .nameB) ?? ""
+        colorA = try container.decodeIfPresent(String.self, forKey: .colorA) ?? Palette.defaultA
+        colorB = try container.decodeIfPresent(String.self, forKey: .colorB) ?? Palette.defaultB
+        whatsAppA = try container.decodeIfPresent(String.self, forKey: .whatsAppA) ?? ""
+        whatsAppB = try container.decodeIfPresent(String.self, forKey: .whatsAppB) ?? ""
+    }
+
     // MARK: CKRecord mapping
 
     init?(record: CKRecord) {
@@ -78,6 +103,8 @@ struct Family: Codable, Equatable, Sendable {
         nameB = record["nameB"] as? String ?? ""
         colorA = record["colorA"] as? String ?? Palette.defaultA
         colorB = record["colorB"] as? String ?? Palette.defaultB
+        whatsAppA = record["whatsAppA"] as? String ?? ""
+        whatsAppB = record["whatsAppB"] as? String ?? ""
     }
 
     init(nameA: String, nameB: String = "", colorA: String, colorB: String = Palette.defaultB) {
@@ -85,6 +112,8 @@ struct Family: Codable, Equatable, Sendable {
         self.nameB = nameB
         self.colorA = colorA
         self.colorB = colorB
+        self.whatsAppA = ""
+        self.whatsAppB = ""
     }
 
     func apply(to record: CKRecord) {
@@ -92,6 +121,8 @@ struct Family: Codable, Equatable, Sendable {
         record["nameB"] = nameB
         record["colorA"] = colorA
         record["colorB"] = colorB
+        record["whatsAppA"] = whatsAppA
+        record["whatsAppB"] = whatsAppB
     }
 }
 

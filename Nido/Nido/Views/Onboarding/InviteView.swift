@@ -37,6 +37,16 @@ struct InviteView: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .padding(.horizontal, 24)
 
+                    // WhatsApp shortcut: opens the recipient picker with
+                    // the invitation message prefilled.
+                    if let whatsAppURL = WhatsAppLink.url(number: "", text: WhatsAppLink.inviteMessage(url: url)) {
+                        Link(destination: whatsAppURL) {
+                            Label("Send via WhatsApp", systemImage: "bubble.left.and.bubble.right.fill")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .padding(.horizontal, 24)
+                    }
+
                     VStack(alignment: .leading, spacing: 12) {
                         InviteHintRow(number: 1, text: String(localized: "Your co-parent installs Nido on their iPhone."))
                         InviteHintRow(number: 2, text: String(localized: "They scan the code or tap the link you send."))

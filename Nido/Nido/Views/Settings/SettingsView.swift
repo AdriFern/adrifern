@@ -263,8 +263,10 @@ struct FamilySettingsView: View {
 
     @State private var myName = ""
     @State private var myColor = Palette.defaultA
+    @State private var myWhatsApp = ""
     @State private var loaded = false
     @State private var isSavingProfile = false
+    @State private var isSavingWhatsApp = false
     @State private var showInvite = false
     @State private var confirmLeave = false
     @State private var confirmRemoveCoParent = false
@@ -285,6 +287,7 @@ struct FamilySettingsView: View {
     var body: some View {
         List {
             profileSection
+            whatsAppSection
             coParentSection
             dangerSection
         }
@@ -382,6 +385,38 @@ struct FamilySettingsView: View {
         }
     }
 
+    private var whatsAppSection: some View {
+        Section {
+            HStack {
+                TextField("+34 600 123 456", text: $myWhatsApp)
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
+                if myWhatsApp.trimmingCharacters(in: .whitespaces) != (family?.whatsApp(of: myRole) ?? "") {
+                    Button {
+                        Task {
+                            isSavingWhatsApp = true
+                            await store.updateMyWhatsApp(familyID: familyID, number: myWhatsApp)
+                            isSavingWhatsApp = false
+                        }
+                    } label: {
+                        if isSavingWhatsApp {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    .disabled(isSavingWhatsApp)
+                    .accessibilityLabel(Text("Save WhatsApp number"))
+                }
+            }
+        } header: {
+            Text("Your WhatsApp (optional)")
+        } footer: {
+            Text("Shared only with \(otherName), so their “Notify on WhatsApp” buttons open your chat directly. Include the country code. Leave empty to share nothing — the buttons then open WhatsApp's contact picker instead.")
+        }
+    }
+
     private var coParentSection: some View {
         Section {
             if let family {
@@ -438,6 +473,7 @@ struct FamilySettingsView: View {
         loaded = true
         myName = family.name(of: myRole)
         myColor = family.colorHex(of: myRole)
+        myWhatsApp = family.whatsApp(of: myRole)
     }
 }
 

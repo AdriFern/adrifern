@@ -14,6 +14,8 @@ struct DayDetailSheet: View {
     @State private var proposeTarget: ParentRole?
     @State private var proposalMessage = ""
     @State private var isWorking = false
+    @State private var isSoftening = false
+    @State private var originalMessage: String?
 
     private var owner: ParentRole? { store.owner(of: member.id, on: dayKey) }
 
@@ -30,6 +32,18 @@ struct DayDetailSheet: View {
             }
         }
         return nil
+    }
+
+    private func softenMessage() {
+        let current = proposalMessage
+        Task {
+            isSoftening = true
+            if let softened = await NidoIntelligence.neutralTone(for: current) {
+                if originalMessage == nil { originalMessage = current }
+                proposalMessage = softened
+            }
+            isSoftening = false
+        }
     }
 
     var body: some View {
@@ -137,16 +151,28 @@ struct DayDetailSheet: View {
                 Text("You proposed that this day goes to \(newOwnerName). \(otherName) hasn't responded yet.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Button(role: .destructive) {
-                    act {
-                        await store.cancel(pending.request)
-                        saveNoteAndDismiss()
+                HStack {
+                    Button(role: .destructive) {
+                        act {
+                            await store.cancel(pending.request)
+                            saveNoteAndDismiss()
+                        }
+                    } label: {
+                        Text("Cancel request")
+                            .font(.subheadline.weight(.semibold))
                     }
-                } label: {
-                    Text("Cancel request")
-                        .font(.subheadline.weight(.semibold))
+                    .disabled(isWorking)
+
+                    Spacer()
+
+                    if let url = store.whatsAppNotifyURL(for: pending.request) {
+                        Link(destination: url) {
+                            Label("Notify on WhatsApp", systemImage: "bubble.left.and.bubble.right.fill")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .tint(.green)
+                    }
                 }
-                .disabled(isWorking)
             } else {
                 Text("\(requesterName) proposed that this day goes to \(newOwnerName).")
                     .font(.subheadline)
@@ -298,6 +324,40 @@ struct DayDetailSheet: View {
                     .lineLimit(2...4)
                     .padding(12)
                     .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+
+                // On-device tone helper: co-parenting messages land better
+                // calm. The original stays one tap away — the AI suggests,
+                // the user decides.
+                if NidoIntelligence.isAvailable,
+                   !proposalMessage.trimmingCharacters(in: .whitespaces).isEmpty {
+                    HStack {
+                        Button {
+                            softenMessage()
+                        } label: {
+                            if isSoftening {
+                                ProgressView()
+                            } else {
+                                Label("Soften the tone", systemImage: "wand.and.sparkles")
+                                    .font(.footnote.weight(.semibold))
+                            }
+                        }
+                        .disabled(isSoftening)
+
+                        Spacer()
+
+                        if originalMessage != nil {
+                            Button {
+                                if let original = originalMessage {
+                                    proposalMessage = original
+                                    originalMessage = nil
+                                }
+                            } label: {
+                                Text("Restore my wording")
+                                    .font(.footnote)
+                            }
+                        }
+                    }
+                }
 
                 Button {
                     Task {

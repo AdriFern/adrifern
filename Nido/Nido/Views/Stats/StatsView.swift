@@ -4,6 +4,8 @@ import SwiftUI
 struct StatsView: View {
     @Environment(FamilyStore.self) private var store
     @State private var year = Calendar.current.component(.year, from: Date())
+    @State private var aiSummary: String?
+    @State private var isSummarizing = false
 
     private var yearRange: ClosedRange<Int> {
         let current = Calendar.current.component(.year, from: Date())
@@ -23,6 +25,8 @@ struct StatsView: View {
 
                     if let family = store.selectedMember.flatMap({ store.context($0.id)?.family }) {
                         yearSummaryCard(family: family)
+                        monthSummaryCard(family: family)
+                        equityCard(family: family)
                         monthlyBreakdownCard(family: family)
                     }
                 }
@@ -30,6 +34,9 @@ struct StatsView: View {
             }
             .background(Theme.background)
             .navigationTitle(Text("Stats"))
+            .onChange(of: store.selectedMember?.id) { _, _ in
+                aiSummary = nil
+            }
         }
     }
 
@@ -153,6 +160,112 @@ struct StatsView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - This month
+
+    private func monthFacts(family: Family) -> String {
+        let now = Date()
+        let prefix = String(Day.key(for: now).prefix(7)) + "-"
+        let totals = counts(forPrefix: prefix)
+        let monthName = now.formatted(.dateTime.month(.wide))
+        let memberName = store.selectedMember?.name ?? ""
+        var approved = 0, declined = 0, pending = 0
+        if let member = store.selectedMember {
+            for request in store.requests
+            where request.memberID == member.id
+                && Day.calendar.isDate(request.createdAt, equalTo: now, toGranularity: .month) {
+                switch request.status {
+                case .approved: approved += 1
+                case .declined: declined += 1
+                case .pending: pending += 1
+                case .cancelled: break
+                }
+            }
+        }
+        var parts = [String(localized: "\(memberName) in \(monthName) — days with \(family.name(of: .parentA)): \(totals.a) · \(family.name(of: .parentB)): \(totals.b).")]
+        if approved + declined + pending > 0 {
+            parts.append(String(localized: "Requests this month — approved: \(approved), declined: \(declined), pending: \(pending)."))
+        }
+        return parts.joined(separator: " ")
+    }
+
+    private func monthSummaryCard(family: Family) -> some View {
+        let facts = monthFacts(family: family)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("This month")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if NidoIntelligence.isAvailable {
+                    Button {
+                        summarize(facts)
+                    } label: {
+                        if isSummarizing {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    .disabled(isSummarizing)
+                    .accessibilityLabel(Text("Retell with Apple Intelligence"))
+                }
+            }
+
+            Text(aiSummary ?? facts)
+                .font(.subheadline)
+
+            if aiSummary != nil {
+                Text("Written on this device by Apple Intelligence from the numbers above — nothing leaves your iPhone.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
+    }
+
+    private func summarize(_ facts: String) {
+        Task {
+            isSummarizing = true
+            if let summary = await NidoIntelligence.monthlySummary(facts: facts) {
+                aiSummary = summary
+            }
+            isSummarizing = false
+        }
+    }
+
+    // MARK: - Fairness check
+
+    private func equityCard(family: Family) -> some View {
+        let insights = EquityAnalysis.insights(assignments: memberAssignments, family: family)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Fairness check")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(insights) { insight in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: insight.symbolName)
+                        .font(.subheadline)
+                        .foregroundStyle(insight.kind == .balanced ? Color.green : Color.accentColor)
+                        .frame(width: 22)
+                    Text(insight.text)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            Text("Computed on this device from the assigned days — information for both of you, not a scorecard.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous))
     }
 
     // MARK: - Monthly breakdown

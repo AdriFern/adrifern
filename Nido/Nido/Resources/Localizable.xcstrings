@@ -34,6 +34,26 @@
         }
       }
     },
+    "%@ in %@ — days with %@: %lld · %@: %lld." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ en %2$@ — días con %3$@: %4$lld · %5$@: %6$lld."
+          }
+        }
+      }
+    },
+    "%@ is currently on a run of %lld days in a row." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ lleva ahora una racha de %2$lld días seguidos."
+          }
+        }
+      }
+    },
     "%@ is with %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -453,6 +473,16 @@
         }
       }
     },
+    "+34 600 123 456" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+34 600 123 456"
+          }
+        }
+      }
+    },
     "2 days, 2 days, then the weekend — swapping each week" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -606,6 +636,16 @@
         }
       }
     },
+    "Apply days" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar los días"
+          }
+        }
+      }
+    },
     "Apply schedule" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -646,6 +686,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Albaricoque"
+          }
+        }
+      }
+    },
+    "Ask in words" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pedir con palabras"
           }
         }
       }
@@ -843,6 +893,16 @@
         }
       }
     },
+    "Check the days before sending" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa los días antes de enviar"
+          }
+        }
+      }
+    },
     "Child" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -904,6 +964,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opción de color"
+          }
+        }
+      }
+    },
+    "Computed on this device from the assigned days — information for both of you, not a scorecard." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calculado en este dispositivo a partir de los días asignados. Información para los dos, no un marcador."
           }
         }
       }
@@ -1117,6 +1187,16 @@
         }
       }
     },
+    "Draft the days" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convertir en días"
+          }
+        }
+      }
+    },
     "Each child or pet has their own custody calendar — schedules can differ between them." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1168,6 +1248,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Todo se guarda en tu iCloud privado y solo se comparte entre vosotros dos. Las notificaciones llegan automáticamente cuando algo cambia."
+          }
+        }
+      }
+    },
+    "Fairness check" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Control de equidad"
           }
         }
       }
@@ -1484,6 +1574,36 @@
         }
       }
     },
+    "I've proposed a change for %@ in Nido: %@. Open Nido to approve or decline it. 🪺" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te he propuesto en Nido un cambio para %1$@: %2$@. Abre Nido para aprobarlo o rechazarlo. 🪺"
+          }
+        }
+      }
+    },
+    "I've proposed changes to %lld of %@'s days in Nido. Open Nido to review them. 🪺" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te he propuesto cambios en %1$lld días de %2$@ en Nido. Abre Nido para revisarlos. 🪺"
+          }
+        }
+      }
+    },
+    "I've sent you a repeating-schedule proposal for %@ in Nido, covering %lld days. Open Nido to review and approve it. 🪺" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te he enviado en Nido una propuesta de plan recurrente para %1$@, con %2$lld días. Abre Nido para revisarla y aprobarla. 🪺"
+          }
+        }
+      }
+    },
     "If a day changed after the proposal was sent, that day is skipped for safety and Nido tells you so. The remaining days apply normally." : {
       "localizations" : {
         "es" : {
@@ -1510,6 +1630,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En el iCloud privado de quien creó el calendario, compartido mediante la compartición de iCloud de Apple con una única persona por familia: el otro progenitor. Sin cuentas, sin servidores de terceros y sin ninguna analítica."
+          }
+        }
+      }
+    },
+    "In the last 30 days %@ has had %@ of the assigned days (overall this year: %@)." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En los últimos 30 días, %1$@ ha tenido el %2$@ de los días asignados (en el conjunto del año: %3$@)."
           }
         }
       }
@@ -1576,6 +1706,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Únete a nuestro calendario de custodia en Nido"
+          }
+        }
+      }
+    },
+    "Join our custody calendar on Nido: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Únete a nuestro calendario de custodia en Nido: %@"
           }
         }
       }
@@ -1832,6 +1972,16 @@
         }
       }
     },
+    "No notable imbalances in the last 8 weeks — the split looks balanced." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin desequilibrios destacables en las últimas 8 semanas: el reparto se ve equilibrado."
+          }
+        }
+      }
+    },
     "No parent assigned yet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1904,6 +2054,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nada que recuperar"
+          }
+        }
+      }
+    },
+    "Notify on WhatsApp" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avisar por WhatsApp"
           }
         }
       }
@@ -2324,6 +2484,16 @@
         }
       }
     },
+    "Requests this month — approved: %lld, declined: %lld, pending: %lld." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solicitudes este mes — aprobadas: %1$lld, rechazadas: %2$lld, pendientes: %3$lld."
+          }
+        }
+      }
+    },
     "Restore an existing calendar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2331,6 +2501,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recuperar un calendario existente"
+          }
+        }
+      }
+    },
+    "Restore my wording" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recuperar mi redacción"
+          }
+        }
+      }
+    },
+    "Retell with Apple Intelligence" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redactar con Apple Intelligence"
           }
         }
       }
@@ -2364,6 +2554,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los mismos días cada semana"
+          }
+        }
+      }
+    },
+    "Save WhatsApp number" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar el número de WhatsApp"
           }
         }
       }
@@ -2477,6 +2677,16 @@
         }
       }
     },
+    "Send for approval" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar para su aprobación"
+          }
+        }
+      }
+    },
     "Send invitation link" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2506,6 +2716,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enviar a %@ para su aprobación"
+          }
+        }
+      }
+    },
+    "Send via WhatsApp" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar por WhatsApp"
           }
         }
       }
@@ -2549,6 +2769,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajustes → Hijos y mascotas → «Añadir un hijo o una mascota». Tendrá su propio calendario con los mismos colores y reglas de aprobación; cambia entre calendarios con los chips de arriba."
+          }
+        }
+      }
+    },
+    "Shared only with %@, so their “Notify on WhatsApp” buttons open your chat directly. Include the country code. Leave empty to share nothing — the buttons then open WhatsApp's contact picker instead." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se comparte con %@, para que sus botones de «Avisar por WhatsApp» abran directamente tu chat. Incluye el prefijo del país. Déjalo vacío para no compartir nada: los botones abrirán entonces el selector de contactos de WhatsApp."
           }
         }
       }
@@ -2614,6 +2844,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pizarra"
+          }
+        }
+      }
+    },
+    "Soften the tone" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suavizar el tono"
           }
         }
       }
@@ -2766,6 +3006,16 @@
         }
       }
     },
+    "That couldn't be turned into calendar days. Try naming the days more concretely — e.g. “the weekend of August 9”." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo convertir en días de calendario. Prueba a nombrar los días de forma más concreta, p. ej., «el fin de semana del 9 de agosto»."
+          }
+        }
+      }
+    },
     "That day is part of a pending request. It stays locked until the request is approved, declined or cancelled." : {
       "localizations" : {
         "es" : {
@@ -2825,6 +3075,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "El calendario que compartes con %@ se eliminó o se retiró tu acceso."
+          }
+        }
+      }
+    },
+    "The days go to %@ as one proposal — nothing changes until they approve it." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los días se envían a %@ como una única propuesta; nada cambia hasta que la apruebe."
           }
         }
       }
@@ -2979,6 +3239,16 @@
         }
       }
     },
+    "This month" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este mes"
+          }
+        }
+      }
+    },
     "This permanently deletes the calendar, requests and notes for both parents." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3071,6 +3341,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los días sin asignar puede rellenarlos cualquiera de los dos."
+          }
+        }
+      }
+    },
+    "Understood on this device by Apple Intelligence — nothing leaves your iPhone." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entendido en este dispositivo por Apple Intelligence; nada sale de tu iPhone."
           }
         }
       }
@@ -3174,12 +3454,32 @@
         }
       }
     },
+    "Weekend days in the last 8 weeks: %@ %lld · %@ %lld." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Días de fin de semana en las últimas 8 semanas: %1$@ %2$lld · %3$@ %4$lld."
+          }
+        }
+      }
+    },
     "What can one family see about the other?" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "¿Qué puede ver una familia de la otra?"
+          }
+        }
+      }
+    },
+    "What do you need?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Qué necesitas?"
           }
         }
       }
@@ -3276,6 +3576,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Con %@"
+          }
+        }
+      }
+    },
+    "Written on this device by Apple Intelligence from the numbers above — nothing leaves your iPhone." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redactado en este dispositivo por Apple Intelligence a partir de los números de arriba; nada sale de tu iPhone."
           }
         }
       }
@@ -3431,6 +3741,26 @@
         }
       }
     },
+    "You're not connected yet, so the days apply right away." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no estáis conectados, así que los días se aplican de inmediato."
+          }
+        }
+      }
+    },
+    "Your WhatsApp (optional)" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu WhatsApp (opcional)"
+          }
+        }
+      }
+    },
     "Your calendar was found but couldn't be loaded. Please check your connection and try again." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3581,6 +3911,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "p. ej., Dentista a las 17:00, mochila de natación lista…"
+          }
+        }
+      }
+    },
+    "e.g. I need the second weekend of August, and I offer the last weekend of July in return." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "p. ej., Necesito el segundo fin de semana de agosto y ofrezco a cambio el último de julio."
           }
         }
       }

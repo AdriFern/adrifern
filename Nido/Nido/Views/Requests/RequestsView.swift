@@ -180,13 +180,27 @@ struct RequestRow: View {
             }
 
             if mode == .outgoing {
-                Button(role: .destructive) {
-                    act { await store.cancel(request) }
-                } label: {
-                    Text("Cancel request")
-                        .font(.subheadline)
+                HStack {
+                    Button(role: .destructive) {
+                        act { await store.cancel(request) }
+                    } label: {
+                        Text("Cancel request")
+                            .font(.subheadline)
+                    }
+                    .disabled(isWorking)
+
+                    Spacer()
+
+                    // Voluntary heads-up: opens WhatsApp with the message
+                    // prefilled; the user always taps send themselves.
+                    if let url = store.whatsAppNotifyURL(for: request) {
+                        Link(destination: url) {
+                            Label("Notify on WhatsApp", systemImage: "bubble.left.and.bubble.right.fill")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .tint(.green)
+                    }
                 }
-                .disabled(isWorking)
             }
         }
         .padding(.vertical, 6)

@@ -153,6 +153,20 @@ final class FamilyStore {
         families[request.familyID]?.name(of: myRole(in: request.familyID).other) ?? String(localized: "Co-parent")
     }
 
+    /// wa.me link that opens WhatsApp with a heads-up about this request
+    /// prefilled — directly to the co-parent's chat when they shared
+    /// their number, otherwise to WhatsApp's recipient picker.
+    func whatsAppNotifyURL(for request: ChangeRequest) -> URL? {
+        guard let family = families[request.familyID] else { return nil }
+        let number = family.whatsApp(of: myRole(in: request.familyID).other)
+        let text = WhatsAppLink.requestMessage(
+            memberName: member(request.memberID)?.name ?? "",
+            changes: request.changes,
+            isPattern: request.kind == .pattern
+        )
+        return WhatsAppLink.url(number: number, text: text)
+    }
+
     /// Whether a member's day can be set to `newOwner` (nil = cleared)
     /// without that family's co-parent approval. Per family:
     /// - a day inside a pending request is never directly editable;
@@ -1393,6 +1407,29 @@ final class FamilyStore {
                 record["colorB"] = myColorHex
                 updated.nameB = myName
                 updated.colorB = myColorHex
+            }
+            try await service.save(records: [record], in: handle)
+            families[familyID] = updated
+            saveCache()
+        } catch {
+            presentError(error)
+        }
+    }
+
+    /// Stores the WhatsApp number a parent chooses to share with their
+    /// co-parent (each side only ever edits their own).
+    func updateMyWhatsApp(familyID: String, number: String) async {
+        guard var updated = families[familyID], let familyRef = ref(familyID) else { return }
+        let trimmed = number.trimmingCharacters(in: .whitespaces)
+        let handle = service.handle(for: familyRef)
+        do {
+            let record = try await service.fetchOrCreateRecord(type: RecordType.family, name: Family.recordName, in: handle)
+            if familyRef.role == .parentA {
+                record["whatsAppA"] = trimmed
+                updated.whatsAppA = trimmed
+            } else {
+                record["whatsAppB"] = trimmed
+                updated.whatsAppB = trimmed
             }
             try await service.save(records: [record], in: handle)
             families[familyID] = updated

@@ -10,6 +10,7 @@ struct CalendarView: View {
     @State private var monthOffset = 0
     @State private var selectedDay: SelectedDay?
     @State private var showPattern = false
+    @State private var showNLProposal = false
     @State private var showInvite = false
 
     private static let offsetRange = Array(-24...36)
@@ -88,16 +89,40 @@ struct CalendarView: View {
                             .controlSize(.small)
                             .opacity(store.isSyncing ? 1 : 0)
                             .frame(width: 20)
-                        Button {
-                            showPattern = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "wand.and.stars")
-                                Text("Schedule")
-                                    .font(.subheadline.weight(.semibold))
+                        if NidoIntelligence.isAvailable {
+                            // With Apple Intelligence, "Schedule" also offers
+                            // asking for days in plain words.
+                            Menu {
+                                Button {
+                                    showPattern = true
+                                } label: {
+                                    Label("Repeating schedule", systemImage: "repeat")
+                                }
+                                Button {
+                                    showNLProposal = true
+                                } label: {
+                                    Label("Ask in words", systemImage: "text.bubble")
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "wand.and.stars")
+                                    Text("Schedule")
+                                        .font(.subheadline.weight(.semibold))
+                                }
                             }
+                            .accessibilityLabel(Text("Set up a repeating schedule"))
+                        } else {
+                            Button {
+                                showPattern = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "wand.and.stars")
+                                    Text("Schedule")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                            }
+                            .accessibilityLabel(Text("Set up a repeating schedule"))
                         }
-                        .accessibilityLabel(Text("Set up a repeating schedule"))
                     }
                 }
             }
@@ -111,6 +136,11 @@ struct CalendarView: View {
             .sheet(isPresented: $showPattern) {
                 if let member {
                     PatternSheet(member: member)
+                }
+            }
+            .sheet(isPresented: $showNLProposal) {
+                if let member {
+                    NLProposalSheet(member: member)
                 }
             }
             .sheet(isPresented: $showInvite) {
