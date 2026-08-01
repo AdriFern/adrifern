@@ -13,11 +13,11 @@ enum ScheduleKind: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .daily: return "Every day"
-        case .everyNDays: return "Every few days"
-        case .weekly: return "Days of the week"
-        case .monthly: return "Days of the month"
-        case .once: return "One time"
+        case .daily: return String(localized: "Every day")
+        case .everyNDays: return String(localized: "Every few days")
+        case .weekly: return String(localized: "Days of the week")
+        case .monthly: return String(localized: "Days of the month")
+        case .once: return String(localized: "One time")
         }
     }
 
@@ -32,37 +32,63 @@ enum ScheduleKind: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Stored inside Routine as versioned JSON. Decoding uses `decodeIfPresent`
+/// with defaults for EVERY field so adding fields in future versions can never
+/// invalidate existing user data — a hard requirement for a shipping app.
 struct Schedule: Codable, Equatable {
+    var version: Int = 1
     var kind: ScheduleKind = .daily
     /// Interval for `.everyNDays` (2 = every other day). Counted from `startDate`.
     var interval: Int = 2
     /// Weekdays for `.weekly` (1 = Sunday … 7 = Saturday, matching `Calendar`).
     var weekdays: Set<Int> = []
-    /// Days of the month for `.monthly` (1…31).
+    /// Days of the month for `.monthly` (1…31). Days beyond a month's length
+    /// clamp to its last day (31 → Feb 28/29), industry-standard behavior.
     var monthDays: Set<Int> = []
     var startDate: Date = Calendar.current.startOfDay(for: .now)
     var endDate: Date?
 
+    init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case version, kind, interval, weekdays, monthDays, startDate, endDate
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = (try? c.decodeIfPresent(Int.self, forKey: .version)) ?? 1
+        kind = (try? c.decodeIfPresent(ScheduleKind.self, forKey: .kind)) ?? .daily
+        interval = (try? c.decodeIfPresent(Int.self, forKey: .interval)) ?? 2
+        weekdays = (try? c.decodeIfPresent(Set<Int>.self, forKey: .weekdays)) ?? []
+        monthDays = (try? c.decodeIfPresent(Set<Int>.self, forKey: .monthDays)) ?? []
+        startDate = (try? c.decodeIfPresent(Date.self, forKey: .startDate)) ?? Calendar.current.startOfDay(for: .now)
+        endDate = try? c.decodeIfPresent(Date.self, forKey: .endDate)
+    }
+
     func summary(times: [Int]) -> String {
-        let timeText = times.isEmpty ? "" : " at " + times.sorted().map { $0.timeString }.joined(separator: ", ")
+        let timeText = times.isEmpty ? "" : " " + String(localized: "at") + " " + times.sorted().map { $0.timeString }.joined(separator: ", ")
         return recurrenceText + timeText
     }
 
     var recurrenceText: String {
         switch kind {
         case .daily:
-            return "Every day"
+            return String(localized: "Every day")
         case .everyNDays:
-            return interval == 2 ? "Every other day" : "Every \(interval) days"
+            return interval == 2
+                ? String(localized: "Every other day")
+                : String(localized: "Every \(interval) days")
         case .weekly:
             let symbols = Calendar.current.shortWeekdaySymbols
             let names = weekdays.sorted().map { symbols[$0 - 1] }
-            return names.isEmpty ? "Weekly" : names.joined(separator: ", ")
+            return names.isEmpty ? String(localized: "Weekly") : names.joined(separator: ", ")
         case .monthly:
             let days = monthDays.sorted().map(String.init)
-            return days.isEmpty ? "Monthly" : "Monthly on day " + days.joined(separator: ", ")
+            return days.isEmpty
+                ? String(localized: "Monthly")
+                : String(localized: "Monthly on day \(days.joined(separator: ", "))")
         case .once:
-            return "Once on " + startDate.formatted(date: .abbreviated, time: .omitted)
+            return String(localized: "Once on \(startDate.formatted(date: .abbreviated, time: .omitted))")
         }
     }
 }
@@ -78,14 +104,17 @@ enum PresenceKind: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .always: return "Always with me"
-        case .alternatingWeeks: return "Alternating weeks"
-        case .weekdays: return "Certain days each week"
+        case .always: return String(localized: "Always with me")
+        case .alternatingWeeks: return String(localized: "Alternating weeks")
+        case .weekdays: return String(localized: "Certain days each week")
         }
     }
 }
 
+/// Stored inside ContextTag as versioned JSON — same forward-compatible
+/// decoding rules as Schedule.
 struct PresencePattern: Codable, Equatable {
+    var version: Int = 1
     var kind: PresenceKind = .alternatingWeeks
     /// Any date that falls inside an "on" week for `.alternatingWeeks`.
     var anchorDate: Date = Calendar.current.startOfDay(for: .now)
@@ -93,18 +122,39 @@ struct PresencePattern: Codable, Equatable {
     var weeksOff: Int = 1
     /// Weekdays for `.weekdays` (1 = Sunday … 7 = Saturday).
     var weekdays: Set<Int> = []
+    /// The weekday the rotation switches on (1 = Sunday … 7 = Saturday).
+    /// Real custody handoffs are rarely at the calendar week boundary; storing
+    /// it explicitly also keeps the boundary stable across locale changes.
+    var handoffWeekday: Int = Calendar.current.firstWeekday
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case version, kind, anchorDate, weeksOn, weeksOff, weekdays, handoffWeekday
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = (try? c.decodeIfPresent(Int.self, forKey: .version)) ?? 1
+        kind = (try? c.decodeIfPresent(PresenceKind.self, forKey: .kind)) ?? .alternatingWeeks
+        anchorDate = (try? c.decodeIfPresent(Date.self, forKey: .anchorDate)) ?? Calendar.current.startOfDay(for: .now)
+        weeksOn = (try? c.decodeIfPresent(Int.self, forKey: .weeksOn)) ?? 1
+        weeksOff = (try? c.decodeIfPresent(Int.self, forKey: .weeksOff)) ?? 1
+        weekdays = (try? c.decodeIfPresent(Set<Int>.self, forKey: .weekdays)) ?? []
+        handoffWeekday = (try? c.decodeIfPresent(Int.self, forKey: .handoffWeekday)) ?? Calendar.current.firstWeekday
+    }
 
     var summary: String {
         switch kind {
         case .always:
-            return "Always"
+            return String(localized: "Always")
         case .alternatingWeeks:
-            if weeksOn == 1 && weeksOff == 1 { return "Every other week" }
-            return "\(weeksOn) week\(weeksOn == 1 ? "" : "s") on, \(weeksOff) off"
+            if weeksOn == 1 && weeksOff == 1 { return String(localized: "Every other week") }
+            return String(localized: "\(weeksOn) weeks with you, \(weeksOff) away")
         case .weekdays:
             let symbols = Calendar.current.shortWeekdaySymbols
             let names = weekdays.sorted().map { symbols[$0 - 1] }
-            return names.isEmpty ? "Certain days" : names.joined(separator: ", ")
+            return names.isEmpty ? String(localized: "Certain days") : names.joined(separator: ", ")
         }
     }
 }
@@ -118,11 +168,13 @@ enum AlertMode: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Honest labels: alarm mode re-alerts a configurable number of times —
+    /// it is not an unlimited alarm and never overrides the silent switch.
     var label: String {
         switch self {
-        case .none: return "Silent (checklist only)"
-        case .notification: return "Notification"
-        case .alarm: return "Alarm (nags until done)"
+        case .none: return String(localized: "Silent (checklist only)")
+        case .notification: return String(localized: "Notification")
+        case .alarm: return String(localized: "Alarm (repeat alerts)")
         }
     }
 

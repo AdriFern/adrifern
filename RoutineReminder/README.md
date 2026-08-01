@@ -2,57 +2,63 @@
 
 A single-user iOS app for organizing recurring routines around real life: daily pills,
 every-other-day pet meds, homework on the weeks your daughter is with you, work
-reminders on specific weekdays, monthly bills — each with a checklist, a notification,
-or a nagging alarm you dismiss by marking it done.
+reminders, monthly bills — each with a checklist, a notification, or a repeating
+alarm you dismiss by marking it done.
 
-Everything is on-device: no accounts, no sync, no servers, and the natural-language
-Quick Add is parsed offline (zero AI/API cost).
+Everything is on-device: no accounts, no sync, no servers. The natural-language
+Quick Add is parsed offline in **English and Spanish** (zero AI/API cost), and the
+whole app is localized in both languages, following the iOS system (or per-app)
+language automatically.
 
 ## Features
 
-- **Today** — the day's checklist, sorted by time. Tap to mark done, or expand a
-  routine's checklist and tick off individual steps (each morning pill, each homework
-  subject). Marking done cancels that occurrence's pending notifications and nags.
-- **Flexible schedules** — every day, every other day / every N days (counted from a
-  start date), specific weekdays, specific days of the month, or one-time. Optional
-  end dates.
-- **People & Pets (contexts)** — define who follows a presence pattern: *always*,
-  *alternating weeks* (e.g. 1 week on / 1 week off shared custody, with a preview of
-  upcoming weeks), or *certain weekdays*. Link routines to a person or pet and the
-  reminders only fire on days they're actually with you. Daughter week and pet week
-  can alternate automatically, forever, from a single anchor date.
-- **Alerts per routine** — silent (checklist only), a normal notification, or **alarm
-  mode**: a time-sensitive alert that breaks through Focus and re-notifies every
-  5 minutes (3 times) until marked done. Notifications have **Mark done** and
-  **Snooze 10 min** actions right on the banner.
-- **Calendar** — month view with a dot per scheduled routine and a background tint
-  showing whose week/day it is.
-- **Multi-step wizard** — What → When → Alerts → Checklist, for guided setup.
-- **Quick Add** — type things like:
-  - "Remind me to apply skincare every other day starting tonight"
-  - "Take my pills every day at 8am"
-  - "Homework at 5pm when I have Emma"
-  - "Give Rocky his pill every 2 days at 7pm"
-  - "Pay rent monthly on the 1st"
-
-  A rule-based parser (all offline) turns that into a schedule and shows an editable
-  preview before saving.
+- **Today** — the day's checklist, sorted by time, with overdue highlighting,
+  haptic check-off, and a friendly companion in the corner. Marking done cancels
+  that occurrence's pending notifications and nags.
+- **Flexible schedules** — every day, every other day / every N days, specific
+  weekdays, days of the month (29–31 clamp to short months), or one-time; optional
+  end dates; multiple times per day.
+- **People & Pets (contexts)** — presence patterns: always, alternating weeks with
+  an explicit handoff weekday (Friday custody handoffs work), or certain weekdays.
+  Linked routines only fire on days they're with you, with an upcoming-weeks preview.
+- **Alerts per routine** — silent, notification, or alarm mode: a time-sensitive
+  alert that re-alerts (configurable interval and count) until marked done, with
+  Mark done (requires unlock) and Snooze actions on the banner. Snoozing pauses and
+  restarts the whole chain correctly; opening the app never cancels live reminders.
+  A sentinel notification re-arms scheduling if the app isn't opened for ~2 weeks.
+- **Calendar** — month grid with routine dots, context week tinting + symbols, and
+  a Today button.
+- **Multi-step wizard** — What → When → Alerts → Checklist, with validation; editing
+  offers Save from any step.
+- **Quick Add** — bilingual plain-language parsing with an editable handoff to the
+  full editor ("Refine"). Runs entirely on-device.
+- **Onboarding** — a fast, bubbly 4-page intro guided by the companion, with
+  starter cards and notification permission priming.
+- **Rewards** — completions earn points; points unlock accent themes and new
+  companions (all cosmetic, all in code, no data weight). Pet corner shows your
+  companion's mood based on today's real completions.
+- **Settings** — snooze length, alarm re-alert interval/count, any-time reminder
+  hour, private notifications (generic lock-screen text), appearance
+  (System/Light/Dark), JSON backup export/import.
 
 ## Project layout
 
 ```
 RoutineReminder/
 ├── RoutineReminder.xcodeproj
+├── LAUNCH_GUIDE.md               # App Store launch + monetization playbook
 └── RoutineReminder/
-    ├── RoutineReminderApp.swift      # App entry; SwiftData container; notification wiring
-    ├── Models/
-    │   ├── Models.swift              # Routine, ChecklistItem, ContextTag, CompletionRecord (SwiftData)
-    │   └── Schedule.swift            # Schedule + PresencePattern + AlertMode value types
+    ├── RoutineReminderApp.swift  # Entry; SwiftData container + corruption recovery
+    ├── Localizable.xcstrings     # English + Spanish string catalog
+    ├── Models/                   # SwiftData models + versioned Schedule/Presence types
     ├── Engine/
-    │   ├── Scheduler.swift           # Recurrence + context-presence math, occurrence generation
-    │   ├── NotificationManager.swift # Local notifications, alarm nags, Done/Snooze actions
-    │   └── QuickAddParser.swift      # Offline natural-language parsing
-    └── Views/                        # Today, Calendar, Routines, wizard, People & Pets, Quick Add, Settings
+    │   ├── Scheduler.swift       # Recurrence + custody-week math (DST-safe)
+    │   ├── NotificationManager.swift # Diff-based scheduling, nags, snooze, deep links
+    │   ├── QuickAddParser.swift  # Offline EN/ES natural-language parsing
+    │   ├── AppSettings.swift     # Settings + rewards (points, themes, companions)
+    │   └── DataExport.swift      # JSON backup export/import
+    └── Views/                    # Today, Calendar, Routines, wizard, People & Pets,
+                                  # Quick Add, Onboarding, Pet Corner, Settings
 ```
 
 ## Building
@@ -64,16 +70,11 @@ RoutineReminder/
 
 Notes:
 
-- The Time Sensitive Notifications capability is pre-configured in
-  `RoutineReminder.entitlements` for alarm mode.
-- Local notifications are capped at 64 pending by iOS, so the app schedules the
-  nearest occurrences over the next 14 days and re-syncs every time it becomes
-  active or anything changes.
-- True "critical alerts" that override Silent mode require a special entitlement
-  from Apple; alarm mode uses time-sensitive alerts + repeat nags instead.
-
-## Possible future upgrades
-
-- Shared/synced schedules between two households (CloudKit)
-- An optional LLM-backed Quick Add for more free-form phrasing
-- Widgets / lock-screen complications for today's checklist
+- Time Sensitive Notifications and Data Protection entitlements are pre-configured.
+- iOS caps pending local notifications at 64; base alerts are scheduled before
+  alarm nags across a 14-day window, re-synced whenever the app is active, with a
+  day-13 sentinel so reminders can't silently stop.
+- True "critical alerts" that override silent mode require a special Apple
+  entitlement; alarm mode uses time-sensitive alerts + repeat re-alerts instead.
+- See `LAUNCH_GUIDE.md` for the full App Store submission, pricing, listing, and
+  QA playbook.

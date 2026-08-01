@@ -8,10 +8,16 @@ struct Occurrence: Identifiable, Hashable {
 
     var id: String { "\(routineID.uuidString)-\(Scheduler.dayKey(for: day))-\(slotMinutes)" }
 
-    /// The concrete fire date (day + slot). All-day tasks fire at 9:00 AM.
+    /// The concrete fire date (day + slot), DST-safe: built by *setting* the
+    /// wall-clock hour rather than adding elapsed minutes, so an 8:00 reminder
+    /// stays 8:00 on daylight-saving transition days. All-day tasks use the
+    /// user-configurable any-time hour.
     var fireDate: Date {
-        let minutes = slotMinutes >= 0 ? slotMinutes : 9 * 60
-        return Calendar.current.date(byAdding: .minute, value: minutes, to: day) ?? day
+        let minutes = slotMinutes >= 0 ? slotMinutes : AppSettings.shared.anyTimeReminderMinutes
+        let calendar = Calendar.current
+        return calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day)
+            ?? calendar.date(byAdding: .minute, value: minutes, to: day)
+            ?? day
     }
 }
 
@@ -28,14 +34,23 @@ enum Scheduler {
         return f
     }()
 
+    /// Local civil date key ("2026-08-01"). The timezone is re-read on every
+    /// call so a timezone change mid-session can't mis-key completions.
     static func dayKey(for date: Date) -> String {
-        dayKeyFormatter.string(from: date)
+        dayKeyFormatter.timeZone = TimeZone.current
+        return dayKeyFormatter.string(from: date)
     }
 
     // MARK: Context presence
 
-    static func startOfWeek(_ date: Date) -> Date {
-        calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+    /// Start of the presence "week" for a date, using the pattern's explicit
+    /// handoff weekday — NOT the locale's first weekday, so custody boundaries
+    /// are stable across regions and can model mid-week handoffs (e.g. Friday).
+    static func presenceWeekStart(for date: Date, handoffWeekday: Int) -> Date {
+        let day = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: day)
+        let delta = ((weekday - handoffWeekday) + 7) % 7
+        return calendar.date(byAdding: .day, value: -delta, to: day) ?? day
     }
 
     static func isContextActive(_ pattern: PresencePattern, on date: Date) -> Bool {
@@ -47,8 +62,8 @@ enum Scheduler {
             return pattern.weekdays.contains(weekday)
         case .alternatingWeeks:
             let cycle = max(1, pattern.weeksOn) + max(0, pattern.weeksOff)
-            let anchorWeek = startOfWeek(pattern.anchorDate)
-            let thisWeek = startOfWeek(date)
+            let anchorWeek = presenceWeekStart(for: pattern.anchorDate, handoffWeekday: pattern.handoffWeekday)
+            let thisWeek = presenceWeekStart(for: date, handoffWeekday: pattern.handoffWeekday)
             let days = calendar.dateComponents([.day], from: anchorWeek, to: thisWeek).day ?? 0
             let weekIndex = Int((Double(days) / 7.0).rounded())
             let position = ((weekIndex % cycle) + cycle) % cycle
@@ -74,7 +89,12 @@ enum Scheduler {
         case .weekly:
             return schedule.weekdays.contains(calendar.component(.weekday, from: day))
         case .monthly:
-            return schedule.monthDays.contains(calendar.component(.day, from: day))
+            guard !schedule.monthDays.isEmpty else { return false }
+            let dayOfMonth = calendar.component(.day, from: day)
+            let lastDay = calendar.range(of: .day, in: .month, for: day)?.count ?? 31
+            // A selected day beyond the month's length clamps to its last day,
+            // so "monthly on the 31st" fires on Feb 28/29, Apr 30, etc.
+            return schedule.monthDays.contains { min($0, lastDay) == dayOfMonth }
         case .once:
             return calendar.isDate(day, inSameDayAs: start)
         }
@@ -106,22 +126,26 @@ enum Scheduler {
         return result.sorted { $0.fireDate < $1.fireDate }
     }
 
-    /// Upcoming occurrences across the next `days` days, for notification scheduling.
+    /// Occurrences over the next `days` days for notification scheduling.
+    /// Includes today's past occurrences (the notification engine needs them
+    /// to keep an open nag window alive); callers filter as needed.
     static func upcomingOccurrences(for routines: [Routine], contexts: [ContextTag], days: Int, from now: Date = .now) -> [Occurrence] {
         var result: [Occurrence] = []
         for offset in 0..<days {
             guard let date = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: now)) else { continue }
             result.append(contentsOf: occurrences(for: routines, contexts: contexts, on: date))
         }
-        return result.filter { $0.fireDate > now }.sorted { $0.fireDate < $1.fireDate }
+        return result.sorted { $0.fireDate < $1.fireDate }
     }
 
-    /// Which weeks a context is active, for editor previews: next `weeks` week ranges with on/off flag.
+    /// Which weeks a context is active, for editor previews: next `weeks`
+    /// presence-week ranges (starting on the pattern's handoff day) with an
+    /// on/off flag.
     static func weekPreview(for pattern: PresencePattern, weeks: Int = 6, from date: Date = .now) -> [(range: String, active: Bool)] {
         var result: [(range: String, active: Bool)] = []
-        let thisWeek = startOfWeek(date)
+        let thisWeek = presenceWeekStart(for: date, handoffWeekday: pattern.handoffWeekday)
         for i in 0..<weeks {
-            guard let weekStart = calendar.date(byAdding: .weekOfYear, value: i, to: thisWeek),
+            guard let weekStart = calendar.date(byAdding: .day, value: i * 7, to: thisWeek),
                   let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else { continue }
             let active = isContextActive(pattern, on: weekStart)
             let label = weekStart.formatted(.dateTime.month(.abbreviated).day()) + " – " + weekEnd.formatted(.dateTime.month(.abbreviated).day())

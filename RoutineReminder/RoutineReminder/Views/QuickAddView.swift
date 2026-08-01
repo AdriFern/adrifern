@@ -1,8 +1,9 @@
 import SwiftUI
 import SwiftData
 
-/// Describe a reminder in plain English and get a parsed, editable preview.
+/// Describe a reminder in plain English or Spanish and get a parsed preview.
 /// Parsing is rule-based and runs entirely on-device — no AI service involved.
+/// If the parse isn't quite right, "Refine" hands the draft to the full editor.
 struct QuickAddView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -10,16 +11,27 @@ struct QuickAddView: View {
 
     @State private var input = ""
     @State private var alertMode: AlertMode = .notification
+    @State private var refining = false
     @FocusState private var focused: Bool
 
-    private static let examples = [
-        "Take my pills every day at 8am",
-        "Apply skincare every other day starting tonight",
-        "Homework at 5pm when I have Emma",
-        "Give Rocky his pill every 2 days at 7pm",
-        "Team report every friday at 9am",
-        "Pay rent monthly on the 1st",
-    ]
+    private var examples: [String] {
+        if Locale.current.language.languageCode?.identifier == "es" {
+            return [
+                "Tomar mis pastillas cada día a las 8",
+                "Skincare un día sí y un día no empezando esta noche",
+                "Deberes a las 5 de la tarde cuando tengo a Emma",
+                "Pastilla de Rocky cada 2 días a las 7 de la tarde",
+                "Pagar alquiler cada mes el 1",
+            ]
+        }
+        return [
+            "Take my pills every day at 8am",
+            "Apply skincare every other day starting tonight",
+            "Homework at 5pm when I have Emma",
+            "Give Rocky his pill every 2 days at 7pm",
+            "Pay rent monthly on the 1st",
+        ]
+    }
 
     private var parsed: ParsedReminder? {
         QuickAddParser.parse(input, contexts: contexts)
@@ -29,18 +41,19 @@ struct QuickAddView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("e.g. Remind me to take my pill every morning at 8", text: $input, axis: .vertical)
+                    TextField(String(localized: "e.g. Remind me to take my pill every morning at 8"),
+                              text: $input, axis: .vertical)
                         .lineLimit(2...4)
                         .focused($focused)
                 } header: {
-                    Text("Describe your reminder")
+                    Text(String(localized: "Describe your reminder"))
                 } footer: {
-                    Text("Understood entirely on your phone — nothing is sent anywhere.")
+                    Text(String(localized: "Understood entirely on your phone — nothing is sent anywhere."))
                 }
 
                 if input.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Section("Try one of these") {
-                        ForEach(Self.examples, id: \.self) { example in
+                    Section(String(localized: "Try one of these")) {
+                        ForEach(examples, id: \.self) { example in
                             Button {
                                 input = example
                             } label: {
@@ -53,13 +66,15 @@ struct QuickAddView: View {
                 }
 
                 if let parsed {
-                    Section("Preview — tap Save if it looks right") {
-                        LabeledContent("Title", value: parsed.title)
-                        LabeledContent("Repeats", value: parsed.schedule.recurrenceText)
-                        LabeledContent("Time", value: parsed.timeMinutes?.timeString ?? "Any time")
-                        LabeledContent("Starts", value: parsed.schedule.startDate.formatted(date: .abbreviated, time: .omitted))
+                    Section(String(localized: "Preview")) {
+                        LabeledContent(String(localized: "Title"), value: parsed.title)
+                        LabeledContent(String(localized: "Repeats"), value: parsed.schedule.recurrenceText)
+                        LabeledContent(String(localized: "Time"),
+                                       value: parsed.timeMinutes?.timeString ?? String(localized: "Any time"))
+                        LabeledContent(String(localized: "Starts"),
+                                       value: parsed.schedule.startDate.formatted(date: .abbreviated, time: .omitted))
                         if let context = parsed.matchedContext {
-                            LabeledContent("Only when with you") {
+                            LabeledContent(String(localized: "Only when with you")) {
                                 ContextChip(context: context)
                             }
                         }
@@ -70,26 +85,46 @@ struct QuickAddView: View {
                         }
                     }
                     Section {
-                        Picker("Alert", selection: $alertMode) {
+                        Picker(String(localized: "Alert"), selection: $alertMode) {
                             ForEach(AlertMode.allCases) { mode in
                                 Label(mode.label, systemImage: mode.symbol).tag(mode)
                             }
                         }
+                    } footer: {
+                        Text(String(localized: "Not quite right? Refine opens the full editor with everything pre-filled."))
+                    }
+                    Section {
+                        Button {
+                            refining = true
+                        } label: {
+                            Label(String(localized: "Refine in editor…"), systemImage: "slider.horizontal.3")
+                        }
                     }
                 }
             }
-            .navigationTitle("Quick Add")
+            .navigationTitle(String(localized: "Quick Add"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
+                    Button(String(localized: "Save"), action: save)
                         .disabled(parsed == nil)
                 }
             }
             .onAppear { focused = true }
+            .sheet(isPresented: $refining, onDismiss: { dismiss() }) {
+                if let parsed {
+                    RoutineEditorView(routine: nil, draft: RoutineDraft(
+                        title: parsed.title,
+                        contextID: parsed.matchedContext?.id,
+                        schedule: parsed.schedule,
+                        times: parsed.timeMinutes.map { [$0] } ?? [],
+                        alertMode: alertMode
+                    ))
+                }
+            }
         }
     }
 

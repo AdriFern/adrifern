@@ -2,45 +2,89 @@ import SwiftUI
 import SwiftData
 
 struct TodayView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject private var notifications = NotificationManager.shared
+
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
+    @State private var userNavigated = false
     @State private var showingQuickAdd = false
     @State private var showingWizard = false
+    @State private var showingPetCorner = false
 
     var body: some View {
         NavigationStack {
             DayChecklistView(day: selectedDay)
+                .id(selectedDay) // re-create so the day-scoped @Query updates
                 .navigationTitle(navigationTitle)
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarLeading) {
                         Button { move(-1) } label: { Image(systemName: "chevron.left") }
-                        Button("Today") { selectedDay = Calendar.current.startOfDay(for: .now) }
-                            .disabled(Calendar.current.isDateInToday(selectedDay))
+                            .accessibilityLabel(Text(String(localized: "Previous day")))
+                        Button(String(localized: "Today")) {
+                            selectedDay = Calendar.current.startOfDay(for: .now)
+                            userNavigated = false
+                        }
+                        .disabled(Calendar.current.isDateInToday(selectedDay))
                         Button { move(1) } label: { Image(systemName: "chevron.right") }
+                            .accessibilityLabel(Text(String(localized: "Next day")))
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
-                        Button { showingQuickAdd = true } label: {
-                            Image(systemName: "text.bubble")
+                        Button {
+                            showingPetCorner = true
+                        } label: {
+                            Text(settings.companion.emoji)
+                                .font(.title3)
                         }
-                        Button { showingWizard = true } label: {
+                        .accessibilityLabel(Text(String(localized: "Visit \(settings.companion.name)")))
+                        Menu {
+                            Button {
+                                showingWizard = true
+                            } label: {
+                                Label(String(localized: "New Routine…"), systemImage: "list.bullet.rectangle.portrait")
+                            }
+                            Button {
+                                showingQuickAdd = true
+                            } label: {
+                                Label(String(localized: "Quick Add — just type it"), systemImage: "sparkles")
+                            }
+                        } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityLabel(Text(String(localized: "Add")))
                     }
                 }
                 .sheet(isPresented: $showingQuickAdd) { QuickAddView() }
                 .sheet(isPresented: $showingWizard) { RoutineEditorView(routine: nil) }
+                .sheet(isPresented: $showingPetCorner) { PetCornerView() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Never greet the user with yesterday's checklist: snap forward on
+            // wake unless they deliberately navigated to another day.
+            if phase == .active && !userNavigated {
+                selectedDay = Calendar.current.startOfDay(for: .now)
+            }
+        }
+        .onChange(of: notifications.openRequest) { _, request in
+            if let request {
+                selectedDay = request.day
+                userNavigated = false
+                notifications.openRequest = nil
+            }
         }
     }
 
     private var navigationTitle: String {
-        if Calendar.current.isDateInToday(selectedDay) { return "Today" }
-        if Calendar.current.isDateInTomorrow(selectedDay) { return "Tomorrow" }
-        if Calendar.current.isDateInYesterday(selectedDay) { return "Yesterday" }
+        if Calendar.current.isDateInToday(selectedDay) { return String(localized: "Today") }
+        if Calendar.current.isDateInTomorrow(selectedDay) { return String(localized: "Tomorrow") }
+        if Calendar.current.isDateInYesterday(selectedDay) { return String(localized: "Yesterday") }
         return selectedDay.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
     }
 
     private func move(_ days: Int) {
         if let newDay = Calendar.current.date(byAdding: .day, value: days, to: selectedDay) {
             selectedDay = newDay
+            userNavigated = !Calendar.current.isDateInToday(newDay)
         }
     }
 }
@@ -55,10 +99,18 @@ struct DayChecklistView: View {
     @Query private var contexts: [ContextTag]
     @Query private var completions: [CompletionRecord]
 
+    init(day: Date) {
+        self.day = day
+        let key = Scheduler.dayKey(for: day)
+        // Day-scoped query: never loads the full completion history.
+        _completions = Query(filter: #Predicate<CompletionRecord> { $0.dayKey == key })
+    }
+
     var body: some View {
         let occurrences = Scheduler.occurrences(for: routines, contexts: contexts, on: day)
         let routineMap = Dictionary(uniqueKeysWithValues: routines.map { ($0.id, $0) })
         let activeContexts = contexts.filter { Scheduler.isContextActive($0.pattern, on: day) && $0.pattern.kind != .always }
+        let doneCount = occurrences.filter { record(for: $0)?.isDone == true }.count
 
         List {
             if !activeContexts.isEmpty {
@@ -73,15 +125,19 @@ struct DayChecklistView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 0, trailing: 20))
                 } header: {
-                    Text("With you \(Calendar.current.isDateInToday(day) ? "today" : "this day")")
+                    Text(Calendar.current.isDateInToday(day)
+                         ? String(localized: "With you today")
+                         : String(localized: "With you this day"))
                 }
             }
 
             if occurrences.isEmpty {
-                EmptyStateView(symbol: "checkmark.circle",
-                               title: "Nothing scheduled",
-                               message: "Add a routine with + or describe one in Quick Add.")
-                    .listRowBackground(Color.clear)
+                Section {
+                    EmptyStateView(symbol: "checkmark.circle",
+                                   title: String(localized: "Nothing scheduled"),
+                                   message: String(localized: "A free day! Add a routine with the + button — or just type what you need in Quick Add."))
+                        .listRowBackground(Color.clear)
+                }
             } else {
                 Section {
                     ForEach(occurrences) { occurrence in
@@ -92,17 +148,25 @@ struct DayChecklistView: View {
                         }
                     }
                 } header: {
-                    let done = occurrences.filter { record(for: $0)?.isDone == true }.count
-                    Text("\(done) of \(occurrences.count) done")
+                    Text(String(localized: "\(doneCount) of \(occurrences.count) done"))
+                } footer: {
+                    if doneCount == occurrences.count && !occurrences.isEmpty {
+                        Label {
+                            Text(String(localized: "All done — \(AppSettings.shared.companion.name) is thrilled! 🎉"))
+                        } icon: {
+                            Text(AppSettings.shared.companion.emoji)
+                        }
+                        .font(.subheadline)
+                    }
                 }
             }
         }
+        .sensoryFeedback(.success, trigger: doneCount) { old, new in new > old }
     }
 
     private func record(for occurrence: Occurrence) -> CompletionRecord? {
-        let key = Scheduler.dayKey(for: occurrence.day)
-        return completions.first {
-            $0.routineID == occurrence.routineID && $0.dayKey == key && $0.slotMinutes == occurrence.slotMinutes
+        completions.first {
+            $0.routineID == occurrence.routineID && $0.slotMinutes == occurrence.slotMinutes
         }
     }
 }
@@ -116,9 +180,21 @@ struct OccurrenceRow: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var expanded = false
+    @State private var justCompleted = false
 
     private var isDone: Bool { record?.isDone == true }
-    private var completedItemIDs: Set<UUID> { Set(record?.completedItemIDs ?? []) }
+
+    /// Only IDs that still exist on the routine count — stale IDs from old
+    /// edits can never inflate progress.
+    private var completedItemIDs: Set<UUID> {
+        let current = Set(routine.items.map { $0.id })
+        return Set(record?.completedItemIDs ?? []).intersection(current)
+    }
+
+    private var isOverdue: Bool {
+        !isDone && Calendar.current.isDateInToday(occurrence.day) && occurrence.fireDate < .now
+            && occurrence.slotMinutes >= 0 && routine.alertMode != .none
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -127,23 +203,33 @@ struct OccurrenceRow: View {
                     Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                         .font(.title2)
                         .foregroundStyle(isDone ? Palette.color(routine.colorName) : .secondary)
+                        .symbolEffect(.bounce, value: justCompleted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(isDone
+                    ? String(localized: "Mark \(routine.title) as not done")
+                    : String(localized: "Mark \(routine.title) done")))
 
                 Image(systemName: routine.symbol)
                     .foregroundStyle(.white)
                     .frame(width: 34, height: 34)
                     .background(Palette.color(routine.colorName).gradient, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(routine.title)
                         .strikethrough(isDone)
                         .foregroundStyle(isDone ? .secondary : .primary)
                     HStack(spacing: 6) {
-                        if occurrence.slotMinutes >= 0 {
+                        if isOverdue {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(.red)
+                            Text(occurrence.slotMinutes.timeString)
+                                .foregroundStyle(.red)
+                        } else if occurrence.slotMinutes >= 0 {
                             Text(occurrence.slotMinutes.timeString)
                         } else {
-                            Text("Any time")
+                            Text(String(localized: "Any time"))
                         }
                         if routine.alertMode != .none {
                             Image(systemName: routine.alertMode.symbol)
@@ -162,6 +248,7 @@ struct OccurrenceRow: View {
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                 }
             }
             .contentShape(Rectangle())
@@ -172,22 +259,28 @@ struct OccurrenceRow: View {
                     withAnimation { expanded.toggle() }
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityValue(Text(isDone ? String(localized: "Done") : String(localized: "Not done")))
 
             if expanded && !routine.items.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(routine.sortedItems) { item in
                         let itemDone = completedItemIDs.contains(item.id)
-                        HStack(spacing: 10) {
-                            Image(systemName: itemDone ? "checkmark.square.fill" : "square")
-                                .foregroundStyle(itemDone ? Palette.color(routine.colorName) : .secondary)
-                            Text(item.title)
-                                .font(.subheadline)
-                                .strikethrough(itemDone)
-                                .foregroundStyle(itemDone ? .secondary : .primary)
-                            Spacer()
+                        Button {
+                            toggleItem(item)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: itemDone ? "checkmark.square.fill" : "square")
+                                    .foregroundStyle(itemDone ? Palette.color(routine.colorName) : .secondary)
+                                Text(item.title)
+                                    .font(.subheadline)
+                                    .strikethrough(itemDone)
+                                    .foregroundStyle(itemDone ? .secondary : .primary)
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture { toggleItem(item) }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.leading, 46)
@@ -199,39 +292,46 @@ struct OccurrenceRow: View {
 
     // MARK: Completion
 
-    private func fetchOrCreateRecord() -> CompletionRecord {
-        if let record { return record }
-        let newRecord = CompletionRecord(routineID: occurrence.routineID,
-                                         dayKey: Scheduler.dayKey(for: occurrence.day),
-                                         slotMinutes: occurrence.slotMinutes)
-        modelContext.insert(newRecord)
-        return newRecord
+    private func fetchOrCreateRecord() -> CompletionRecord? {
+        CompletionStore.record(for: occurrence.routineID,
+                               dayKey: Scheduler.dayKey(for: occurrence.day),
+                               slotMinutes: occurrence.slotMinutes,
+                               in: modelContext, createIfMissing: true)
     }
 
     private func toggleDone() {
-        let record = fetchOrCreateRecord()
+        guard let record = fetchOrCreateRecord() else { return }
         record.isDone.toggle()
         record.completedAt = record.isDone ? .now : nil
         if record.isDone {
             record.completedItemIDs = routine.items.map { $0.id }
+            justCompleted.toggle()
+            AppSettings.shared.awardCompletion()
             NotificationManager.shared.cancel(occurrenceID: occurrence.id)
         } else {
             record.completedItemIDs = []
+            AppSettings.shared.revokeCompletion()
             NotificationManager.shared.syncAll()
         }
         try? modelContext.save()
     }
 
     private func toggleItem(_ item: ChecklistItem) {
-        let record = fetchOrCreateRecord()
-        var ids = Set(record.completedItemIDs)
+        guard let record = fetchOrCreateRecord() else { return }
+        var ids = completedItemIDs
         if ids.contains(item.id) { ids.remove(item.id) } else { ids.insert(item.id) }
         record.completedItemIDs = Array(ids)
+        let wasDone = record.isDone
         let allDone = !routine.items.isEmpty && ids.count >= routine.items.count
         record.isDone = allDone
         record.completedAt = allDone ? .now : nil
-        if allDone {
+        if allDone && !wasDone {
+            justCompleted.toggle()
+            AppSettings.shared.awardCompletion()
             NotificationManager.shared.cancel(occurrenceID: occurrence.id)
+        } else if !allDone && wasDone {
+            AppSettings.shared.revokeCompletion()
+            NotificationManager.shared.syncAll()
         }
         try? modelContext.save()
     }

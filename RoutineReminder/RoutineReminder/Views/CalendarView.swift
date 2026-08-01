@@ -6,7 +6,13 @@ struct CalendarView: View {
     @Query private var contexts: [ContextTag]
 
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: .now)?.start ?? .now
-    @State private var selectedDay: Date?
+    @State private var selectedDay: SelectedDay?
+
+    /// Small wrapper instead of a retroactive Identifiable conformance on Date.
+    struct SelectedDay: Identifiable {
+        let day: Date
+        var id: Date { day }
+    }
 
     private var calendar: Calendar { Calendar.current }
 
@@ -21,11 +27,17 @@ struct CalendarView: View {
                 }
                 .padding(.horizontal)
             }
-            .navigationTitle("Calendar")
-            .sheet(item: $selectedDay) { day in
+            .navigationTitle(String(localized: "Calendar"))
+            .toolbar {
+                Button(String(localized: "Today")) {
+                    displayedMonth = calendar.dateInterval(of: .month, for: .now)?.start ?? .now
+                }
+                .disabled(calendar.isDate(displayedMonth, equalTo: .now, toGranularity: .month))
+            }
+            .sheet(item: $selectedDay) { selected in
                 NavigationStack {
-                    DayChecklistView(day: day)
-                        .navigationTitle(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    DayChecklistView(day: selected.day)
+                        .navigationTitle(selected.day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
                         .navigationBarTitleDisplayMode(.inline)
                 }
                 .presentationDetents([.medium, .large])
@@ -36,11 +48,13 @@ struct CalendarView: View {
     private var monthHeader: some View {
         HStack {
             Button { moveMonth(-1) } label: { Image(systemName: "chevron.left") }
+                .accessibilityLabel(Text(String(localized: "Previous month")))
             Spacer()
             Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
                 .font(.headline)
             Spacer()
             Button { moveMonth(1) } label: { Image(systemName: "chevron.right") }
+                .accessibilityLabel(Text(String(localized: "Next month")))
         }
         .padding(.top, 8)
     }
@@ -57,20 +71,27 @@ struct CalendarView: View {
                     .frame(maxWidth: .infinity)
             }
         }
+        .accessibilityHidden(true)
     }
 
     private var monthGrid: some View {
+        // One pass per month, not per cell: occurrences, colors, and active
+        // contexts are precomputed for the whole grid.
         let days = daysInDisplayedMonth()
+        let routineMap = Dictionary(uniqueKeysWithValues: routines.map { ($0.id, $0) })
+        let patterned = contexts.filter { $0.pattern.kind != .always }
+
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 6) {
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                 if let day {
-                    DayCell(day: day,
-                            occurrences: Scheduler.occurrences(for: routines, contexts: contexts, on: day),
-                            activeContexts: contexts.filter {
-                                $0.pattern.kind != .always && Scheduler.isContextActive($0.pattern, on: day)
-                            },
-                            routines: routines)
-                        .onTapGesture { selectedDay = day }
+                    let occurrences = Scheduler.occurrences(for: routines, contexts: contexts, on: day)
+                    let dotColors = occurrences.prefix(4).compactMap { routineMap[$0.routineID]?.colorName }
+                    let active = patterned.filter { Scheduler.isContextActive($0.pattern, on: day) }
+                    DayCell(day: day, dotColors: dotColors, activeContexts: active)
+                        .onTapGesture { selectedDay = SelectedDay(day: day) }
+                        .accessibilityElement()
+                        .accessibilityLabel(Text(dayAccessibilityLabel(day: day, count: occurrences.count, active: active)))
+                        .accessibilityAddTraits(.isButton)
                 } else {
                     Color.clear.frame(height: 54)
                 }
@@ -78,11 +99,20 @@ struct CalendarView: View {
         }
     }
 
+    private func dayAccessibilityLabel(day: Date, count: Int, active: [ContextTag]) -> String {
+        var parts = [day.formatted(.dateTime.weekday(.wide).month(.wide).day())]
+        parts.append(String(localized: "\(count) routine(s)"))
+        for context in active {
+            parts.append(String(localized: "\(context.name) with you"))
+        }
+        return parts.joined(separator: ", ")
+    }
+
     private var legend: some View {
         VStack(alignment: .leading, spacing: 8) {
             let patterned = contexts.filter { $0.pattern.kind != .always }
             if !patterned.isEmpty {
-                Text("Background tint = who's with you that day")
+                Text(String(localized: "Background tint = who's with you that day"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack {
@@ -118,9 +148,8 @@ struct CalendarView: View {
 
 private struct DayCell: View {
     let day: Date
-    let occurrences: [Occurrence]
+    let dotColors: [String]
     let activeContexts: [ContextTag]
-    let routines: [Routine]
 
     private var isToday: Bool { Calendar.current.isDateInToday(day) }
 
@@ -130,15 +159,22 @@ private struct DayCell: View {
                 .font(.subheadline.weight(isToday ? .bold : .regular))
                 .foregroundStyle(isToday ? Color.accentColor : .primary)
             HStack(spacing: 3) {
-                let routineMap = Dictionary(uniqueKeysWithValues: routines.map { ($0.id, $0) })
-                let colors = occurrences.prefix(4).compactMap { routineMap[$0.routineID]?.colorName }
-                ForEach(Array(colors.enumerated()), id: \.offset) { _, colorName in
+                ForEach(Array(dotColors.enumerated()), id: \.offset) { _, colorName in
                     Circle()
                         .fill(Palette.color(colorName))
                         .frame(width: 5, height: 5)
                 }
             }
             .frame(height: 6)
+            // Tiny symbol per active context so meaning isn't color-only.
+            HStack(spacing: 2) {
+                ForEach(activeContexts.prefix(2)) { context in
+                    Image(systemName: context.symbol)
+                        .font(.system(size: 7))
+                        .foregroundStyle(Palette.color(context.colorName))
+                }
+            }
+            .frame(height: 8)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 54)
@@ -156,8 +192,4 @@ private struct DayCell: View {
         }
         return Color(.systemGray6)
     }
-}
-
-extension Date: @retroactive Identifiable {
-    public var id: TimeInterval { timeIntervalSince1970 }
 }

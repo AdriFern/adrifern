@@ -4,5 +4,10 @@
 <dict>
 	<key>com.apple.developer.usernotifications.time-sensitive</key>
 	<true/>
+	<!-- Deliberately CompleteUntilFirstUserAuthentication (not Complete):
+	     the lock-screen "Mark done" notification action writes to the store
+	     while the device is locked, which Complete would silently break. -->
+	<key>com.apple.developer.default-data-protection</key>
+	<string>NSFileProtectionCompleteUntilFirstUserAuthentication</string>
 </dict>
 </plist>

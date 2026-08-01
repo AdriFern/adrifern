@@ -11,48 +11,86 @@ struct ContextsView: View {
 
     @State private var editingContext: ContextTag?
     @State private var creatingNew = false
+    @State private var pendingDeletion: ContextTag?
 
     var body: some View {
         NavigationStack {
             Group {
                 if contexts.isEmpty {
-                    EmptyStateView(symbol: "figure.2.and.child.holdinghands",
-                                   title: "No people or pets yet",
-                                   message: "Add someone with a week pattern — like a child or pet on alternating custody weeks — and link routines to them so reminders only fire on the right weeks.")
+                    ContentUnavailableView {
+                        Label(String(localized: "No people or pets yet"), systemImage: "figure.2.and.child.holdinghands")
+                    } description: {
+                        Text(String(localized: "Add someone with a week pattern — like a child or pet on alternating custody weeks — and link routines to them so reminders only fire on the right weeks."))
+                    } actions: {
+                        Button(String(localized: "Add Person or Pet")) { creatingNew = true }
+                            .buttonStyle(.borderedProminent)
+                    }
                 } else {
                     List {
                         ForEach(contexts) { context in
-                            ContextRow(context: context,
-                                       linkedCount: routines.filter { $0.contextID == context.id }.count)
-                                .contentShape(Rectangle())
-                                .onTapGesture { editingContext = context }
+                            Button {
+                                editingContext = context
+                            } label: {
+                                ContextRow(context: context,
+                                           linkedCount: routines.filter { $0.contextID == context.id }.count)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .onDelete(perform: delete)
+                        .onDelete { offsets in
+                            if let index = offsets.first {
+                                pendingDeletion = contexts[index]
+                            }
+                        }
                     }
                 }
             }
-            .navigationTitle("People & Pets")
+            .navigationTitle(String(localized: "People & Pets"))
             .toolbar {
                 Button { creatingNew = true } label: { Image(systemName: "plus") }
+                    .accessibilityLabel(Text(String(localized: "Add person or pet")))
             }
             .sheet(isPresented: $creatingNew) { ContextEditorView(context: nil) }
             .sheet(item: $editingContext) { context in
                 ContextEditorView(context: context)
             }
+            .confirmationDialog(
+                deletionTitle,
+                isPresented: Binding(get: { pendingDeletion != nil },
+                                     set: { if !$0 { pendingDeletion = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Delete and keep routines (they'll repeat on all days)"), role: .destructive) {
+                    if let context = pendingDeletion { delete(context, deleteRoutines: false) }
+                }
+                Button(String(localized: "Delete with their routines"), role: .destructive) {
+                    if let context = pendingDeletion { delete(context, deleteRoutines: true) }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) { pendingDeletion = nil }
+            }
         }
     }
 
-    private func delete(at offsets: IndexSet) {
-        for index in offsets {
-            let context = contexts[index]
-            // Unlink any routines pointing at this context so they become "always".
-            for routine in routines where routine.contextID == context.id {
+    private var deletionTitle: String {
+        guard let context = pendingDeletion else { return "" }
+        let linked = routines.filter { $0.contextID == context.id }.count
+        return linked > 0
+            ? String(localized: "Delete \(context.name)? \(linked) linked routine(s) would then repeat on ALL days.")
+            : String(localized: "Delete \(context.name)?")
+    }
+
+    private func delete(_ context: ContextTag, deleteRoutines: Bool) {
+        for routine in routines where routine.contextID == context.id {
+            if deleteRoutines {
+                CompletionStore.deleteRecords(for: routine.id, in: modelContext)
+                modelContext.delete(routine)
+            } else {
                 routine.contextID = nil
             }
-            modelContext.delete(context)
         }
+        modelContext.delete(context)
         try? modelContext.save()
         NotificationManager.shared.syncAll()
+        pendingDeletion = nil
     }
 }
 
@@ -66,20 +104,21 @@ private struct ContextRow: View {
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(Palette.color(context.colorName).gradient, in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(context.name)
                 Text(context.pattern.summary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if linkedCount > 0 {
-                    Text("\(linkedCount) linked routine\(linkedCount == 1 ? "" : "s")")
+                    Text(String(localized: "\(linkedCount) linked routine(s)"))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
             }
             Spacer()
             if Scheduler.isContextActive(context.pattern, on: .now) {
-                Text("With you now")
+                Text(String(localized: "With you now"))
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -88,6 +127,7 @@ private struct ContextRow: View {
             }
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -105,15 +145,17 @@ struct ContextEditorView: View {
     @State private var pattern = PresencePattern()
     @State private var loaded = false
 
+    private var weekdaySymbols: [String] { Calendar.current.weekdaySymbols }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Who?") {
-                    TextField("Name (e.g. Emma, Rocky)", text: $name)
+                Section(String(localized: "Who?")) {
+                    TextField(String(localized: "Name (e.g. Emma, Rocky)"), text: $name)
                     SymbolColorPicker(symbol: $symbol, colorName: $colorName, symbols: SymbolChoices.context)
                 }
-                Section("When are they with you?") {
-                    Picker("Pattern", selection: $pattern.kind) {
+                Section(String(localized: "When are they with you?")) {
+                    Picker(String(localized: "Pattern"), selection: $pattern.kind) {
                         ForEach(PresenceKind.allCases) { kind in
                             Text(kind.label).tag(kind)
                         }
@@ -124,42 +166,49 @@ struct ContextEditorView: View {
                 switch pattern.kind {
                 case .alternatingWeeks:
                     Section {
-                        Stepper("Weeks with you: \(pattern.weeksOn)", value: $pattern.weeksOn, in: 1...4)
-                        Stepper("Weeks away: \(pattern.weeksOff)", value: $pattern.weeksOff, in: 1...4)
-                        DatePicker("Any day of a week they're with you",
+                        Stepper(String(localized: "Weeks with you: \(pattern.weeksOn)"), value: $pattern.weeksOn, in: 1...4)
+                        Stepper(String(localized: "Weeks away: \(pattern.weeksOff)"), value: $pattern.weeksOff, in: 1...4)
+                        Picker(String(localized: "Weeks switch on"), selection: $pattern.handoffWeekday) {
+                            ForEach(1...7, id: \.self) { weekday in
+                                Text(weekdaySymbols[weekday - 1]).tag(weekday)
+                            }
+                        }
+                        DatePicker(String(localized: "Any day of a week they're with you"),
                                    selection: $pattern.anchorDate,
                                    displayedComponents: .date)
                     } footer: {
-                        Text("Pick any date inside a week they are (or will be) with you — the rotation is calculated from that week.")
+                        Text(String(localized: "Pick the handoff day (many custody schedules switch on a Friday or Monday) and any date inside a week they are — or will be — with you. The rotation is calculated from that week, forever."))
                     }
-                    Section("Upcoming weeks") {
+                    Section(String(localized: "Upcoming weeks")) {
                         ForEach(Array(Scheduler.weekPreview(for: pattern).enumerated()), id: \.offset) { _, week in
                             HStack {
                                 Text(week.range)
                                 Spacer()
-                                Text(week.active ? "With you" : "Away")
+                                Text(week.active ? String(localized: "With you") : String(localized: "Away"))
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(week.active ? .green : .secondary)
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 case .weekdays:
-                    Section("Which days?") {
+                    Section(String(localized: "Which days?")) {
                         WeekdayPicker(selection: $pattern.weekdays)
                     }
                 case .always:
                     EmptyView()
                 }
             }
-            .navigationTitle(context == nil ? "New Person or Pet" : "Edit")
+            .navigationTitle(context == nil ? String(localized: "New Person or Pet") : String(localized: "Edit"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button(String(localized: "Save"), action: save)
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty
+                                  || (pattern.kind == .weekdays && pattern.weekdays.isEmpty))
                 }
             }
             .onAppear(perform: loadDraft)

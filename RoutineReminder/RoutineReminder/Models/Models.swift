@@ -27,7 +27,10 @@ final class ContextTag {
 
     var pattern: PresencePattern {
         get { (try? JSONDecoder().decode(PresencePattern.self, from: patternData)) ?? PresencePattern() }
-        set { patternData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+        set {
+            // Never overwrite good data with an empty blob on a failed encode.
+            if let data = try? JSONEncoder().encode(newValue) { patternData = data }
+        }
     }
 }
 
@@ -54,7 +57,7 @@ final class Routine {
 
     init(title: String,
          notes: String = "",
-         symbol: String = "pills",
+         symbol: String = "checklist",
          colorName: String = "blue",
          schedule: Schedule = Schedule(),
          timesMinutes: [Int] = [9 * 60],
@@ -75,7 +78,9 @@ final class Routine {
 
     var schedule: Schedule {
         get { (try? JSONDecoder().decode(Schedule.self, from: scheduleData)) ?? Schedule() }
-        set { scheduleData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) { scheduleData = data }
+        }
     }
 
     var alertMode: AlertMode {
@@ -95,8 +100,8 @@ final class ChecklistItem {
     var order: Int
     var routine: Routine?
 
-    init(title: String, order: Int) {
-        self.id = UUID()
+    init(id: UUID = UUID(), title: String, order: Int) {
+        self.id = id
         self.title = title
         self.order = order
     }
@@ -105,7 +110,9 @@ final class ChecklistItem {
 // MARK: - Completion log
 //
 // One record per (routine, day, time slot). Checklist progress for that
-// occurrence is tracked via completedItemIDs.
+// occurrence is tracked via completedItemIDs. Uniqueness of the triple is
+// enforced by the shared upsert in CompletionStore (SwiftData on iOS 17 has
+// no compound unique constraints).
 
 @Model
 final class CompletionRecord {
@@ -123,5 +130,45 @@ final class CompletionRecord {
         self.completedItemIDs = []
         self.isDone = false
         self.completedAt = nil
+    }
+}
+
+// MARK: - Shared completion upsert
+
+enum CompletionStore {
+
+    /// The single path for finding-or-creating a completion record, used by
+    /// both the UI and the notification-action handler so the two can never
+    /// race into duplicates. Also lazily merges any pre-existing duplicates.
+    static func record(for routineID: UUID, dayKey: String, slotMinutes: Int,
+                       in context: ModelContext, createIfMissing: Bool) -> CompletionRecord? {
+        let descriptor = FetchDescriptor<CompletionRecord>(
+            predicate: #Predicate<CompletionRecord> {
+                $0.routineID == routineID && $0.dayKey == dayKey && $0.slotMinutes == slotMinutes
+            }
+        )
+        let matches = (try? context.fetch(descriptor)) ?? []
+        if let first = matches.first {
+            if matches.count > 1 {
+                for dupe in matches.dropFirst() {
+                    first.isDone = first.isDone || dupe.isDone
+                    first.completedItemIDs = Array(Set(first.completedItemIDs).union(dupe.completedItemIDs))
+                    if first.completedAt == nil { first.completedAt = dupe.completedAt }
+                    context.delete(dupe)
+                }
+            }
+            return first
+        }
+        guard createIfMissing else { return nil }
+        let record = CompletionRecord(routineID: routineID, dayKey: dayKey, slotMinutes: slotMinutes)
+        context.insert(record)
+        return record
+    }
+
+    /// Removes all completion history for a deleted routine so the store
+    /// never accumulates unreachable records.
+    static func deleteRecords(for routineID: UUID, in context: ModelContext) {
+        try? context.delete(model: CompletionRecord.self,
+                            where: #Predicate<CompletionRecord> { $0.routineID == routineID })
     }
 }

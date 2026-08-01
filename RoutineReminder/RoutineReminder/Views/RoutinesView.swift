@@ -14,26 +14,50 @@ struct RoutinesView: View {
         NavigationStack {
             Group {
                 if routines.isEmpty {
-                    EmptyStateView(symbol: "list.bullet.rectangle.portrait",
-                                   title: "No routines yet",
-                                   message: "Tap + for the step-by-step setup, or the chat bubble to just describe what you need.")
+                    ContentUnavailableView {
+                        Label(String(localized: "No routines yet"), systemImage: "list.bullet.rectangle.portrait")
+                    } description: {
+                        Text(String(localized: "Set one up step by step, or just describe it in your own words."))
+                    } actions: {
+                        Button(String(localized: "New Routine")) { showingWizard = true }
+                            .buttonStyle(.borderedProminent)
+                        Button {
+                            showingQuickAdd = true
+                        } label: {
+                            Label(String(localized: "Quick Add — just type it"), systemImage: "sparkles")
+                        }
+                    }
                 } else {
                     List {
                         ForEach(routines) { routine in
-                            RoutineListRow(routine: routine, context: contexts.first { $0.id == routine.contextID })
-                                .contentShape(Rectangle())
-                                .onTapGesture { editingRoutine = routine }
+                            Button {
+                                editingRoutine = routine
+                            } label: {
+                                RoutineListRow(routine: routine, context: contexts.first { $0.id == routine.contextID })
+                            }
+                            .buttonStyle(.plain)
                         }
                         .onDelete(perform: delete)
                     }
                 }
             }
-            .navigationTitle("Routines")
+            .navigationTitle(String(localized: "Routines"))
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { showingQuickAdd = true } label: { Image(systemName: "text.bubble") }
-                    Button { showingWizard = true } label: { Image(systemName: "plus") }
+                Menu {
+                    Button {
+                        showingWizard = true
+                    } label: {
+                        Label(String(localized: "New Routine…"), systemImage: "list.bullet.rectangle.portrait")
+                    }
+                    Button {
+                        showingQuickAdd = true
+                    } label: {
+                        Label(String(localized: "Quick Add — just type it"), systemImage: "sparkles")
+                    }
+                } label: {
+                    Image(systemName: "plus")
                 }
+                .accessibilityLabel(Text(String(localized: "Add")))
             }
             .sheet(isPresented: $showingWizard) { RoutineEditorView(routine: nil) }
             .sheet(isPresented: $showingQuickAdd) { QuickAddView() }
@@ -45,7 +69,11 @@ struct RoutinesView: View {
 
     private func delete(at offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(routines[index])
+            let routine = routines[index]
+            // Completion history has no cascading relationship — clean it up
+            // explicitly so the store never accumulates unreachable records.
+            CompletionStore.deleteRecords(for: routine.id, in: modelContext)
+            modelContext.delete(routine)
         }
         try? modelContext.save()
         NotificationManager.shared.syncAll()
@@ -62,6 +90,7 @@ struct RoutineListRow: View {
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(Palette.color(routine.colorName).gradient, in: RoundedRectangle(cornerRadius: 9))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(routine.title)
                     .foregroundStyle(routine.isEnabled ? .primary : .secondary)
@@ -79,11 +108,12 @@ struct RoutineListRow: View {
                         Label("\(routine.items.count)", systemImage: "checklist")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text(String(localized: "\(routine.items.count) checklist steps")))
                     }
                 }
             }
             Spacer()
-            Toggle("", isOn: Binding(
+            Toggle(String(localized: "Enabled"), isOn: Binding(
                 get: { routine.isEnabled },
                 set: { newValue in
                     routine.isEnabled = newValue
