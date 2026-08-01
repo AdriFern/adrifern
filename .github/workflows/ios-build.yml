@@ -1,0 +1,51 @@
+name: iOS Build
+
+on:
+  push:
+    branches: ["claude/**", "main"]
+    paths:
+      - "RoutineReminder/**"
+      - ".github/workflows/ios-build.yml"
+  pull_request:
+    paths:
+      - "RoutineReminder/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (iOS Simulator, unsigned)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          cd RoutineReminder
+          xcodebuild \
+            -project RoutineReminder.xcodeproj \
+            -target RoutineReminder \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ONLY_ACTIVE_ARCH=YES 2>&1 | tee build.log
+
+      - name: Surface errors on failure
+        if: failure()
+        run: |
+          echo "===== Compiler errors ====="
+          grep -E "error:|warning: Swift" RoutineReminder/build.log | head -80 || true
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: RoutineReminder/build.log
+          retention-days: 7
