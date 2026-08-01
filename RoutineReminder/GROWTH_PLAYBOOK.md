@@ -134,28 +134,48 @@ misses.
 
 ## 3. Monetization evolution (with trigger conditions)
 
-1. **Launch:** paid upfront **$3.99 launch week → $4.99**. Positioning: "Pay
-   once. No subscription. No account. Nothing leaves your phone." Enable **Family
-   Sharing** (goodwill + the second household may get it free — which deepens the
-   moat, not cannibalizes it). Generate **offer codes** for co-parenting and pet
-   subreddit/Facebook moderators. **Review prompt** (SKStoreReviewController)
-   fired only at the third Day Close celebration — ask at the peak moment, never
-   after a failure. Regional pricing tiers for Spain + Latin America (the app is
-   fully localized — say so in the Spanish listing).
-2. **When ~50 ratings at 4.5+ land AND v1.1 widgets ship:** raise to **$5.99**
-   ("price rises with value"; early buyers feel rewarded, not milked).
-3. **When the rewards economy is proven (reviews mention the companion/themes):**
-   add a **Supporter Pack** one-time IAP ($2.99–3.99) in v1.2/1.3 — *additive*
-   exclusive cosmetics (a few extra companions/themes) plus a "buy the companion a
-   treat" tip-jar framing (Finch's premium-cosmetics-on-a-free-heart model,
-   adapted to pay-once). **Never** convert previously earnable items to paid, and
-   shields/streaks/reminders stay unbuyable forever.
-4. **When reviews repeatedly ask for sync/second-device:** build v2.0 two-household
-   CloudKit sync as the subscription — **$9.99/year** (defensible because the
-   infra is Apple-hosted and the value is per-family), core app untouched for
-   non-subscribers, existing owners keep everything they have.
-5. **Ongoing:** pitch App Store editorial at every OS-surface adoption (1.2, 1.3);
-   featuring is the single highest-value "campaign" available to a solo paid app.
+> Deepened by the dedicated monetization deep-dive — full detail, mechanics, and
+> comparable pricing in **MONETIZATION_PLAYBOOK.md**. Its corrections are
+> reflected here.
+
+1. **Launch:** paid upfront **$3.99 launch fortnight → $4.99** (announced
+   honestly and dated in the promo text — no fake urgency). Positioning: "Pay
+   once. No subscription. No account. Nothing leaves your phone." Enable
+   **Family Sharing** deliberately (separated co-parents rarely share an Apple
+   Family, so the giveaway fear is illusory; what it shares is same-household
+   caretakers — deepening lock-in). Seed **promo codes** (100 per version,
+   28-day expiry — the correct paid-app mechanism, not "offer codes") to
+   co-parenting, pet, and ADHD community moderators, EN and ES. Submit three
+   **featuring nominations** (launch, cultural moments, OS-surface). Manual
+   LatAm price overrides at 55–70% of US; Spain undiscounted.
+2. **v1.0.x:** review prompt via `requestReview` fired at the all-done
+   celebration under a strict predicate (≥20 completions, ≥5 active days, ≥7
+   days installed, ≤3 attempts/365) + a manual rate link in Settings. Never
+   sentiment-gate.
+3. **v1.1 (earlier than previously planned):** ship the **Supporter Pack**
+   ($2.99 non-consumable — 3 new companions, 3 showpiece themes, alternate app
+   icons, heart badge) + "buy the companion a treat" tip consumables, in one
+   StoreKit 2 effort (on-device `Transaction.currentEntitlements` — works
+   offline, keeps "Data Not Collected" truthful). Two permanent lanes: earnable
+   never becomes paid, supporter items never earnable. Footer line: *"The app
+   is complete without this."* Raise the app to **$5.99** with the widget
+   release. Why now: the earnable catalog maxes out (~750 pts) in 4–6 weeks —
+   the shelf must not go dead for your best users.
+4. **v1.2:** raise to **$6.99** (now clearly more app than the $5.99
+   incumbents; the custody moat carries the premium); extend the earnable
+   points ladder so the free progression doesn't end.
+5. **v2.0 "Two Homes" sync subscription:** **$14.99/yr or $1.99/mo, per
+   family** — the subscriber's co-parent joins free via CloudKit share link
+   (they still buy the app: every sub sells a copy). 14-day trial, billing
+   grace period, `COPARENT` subscription offer codes, iOS 18 win-back offers.
+   Printed grandfathering promises: everything local stays free-with-purchase
+   forever; **lapse = pause, never loss** (a tested code path). Anchor against
+   OurFamilyWizard's ~$144/yr *per parent*.
+6. **Ongoing:** pitch App Store editorial at every OS-surface adoption (1.2,
+   1.3) in US + ES/MX storefronts; featuring is the highest-EV "campaign" a
+   solo paid app has. Long-term (v3+): Due-style **Upgrade Pass** is the proven
+   endgame for adding recurring revenue to a paid offline utility without a
+   ratings collapse.
 
 ---
 
@@ -190,8 +210,8 @@ misses.
 | 1.3 | ~3–4 weeks | Watch + custody ring + quests | Price-point support |
 | 2.0 | ~6+ weeks | Two-household sync (subscription) | Revenue |
 
-*Note: the dedicated monetization deep-dive agent hit the session's usage limit;
-§3 synthesizes the launch council strategist's monetization report plus the two
-completed growth reports. A standalone monetization deep-dive (StoreKit 2 win-back
-offers, paywall-view specifics, RevenueCat benchmark data) can be run later if
-wanted — the numbers above are conservative and follow proven indie patterns.*
+*The dedicated monetization deep-dive has since completed — see
+**MONETIZATION_PLAYBOOK.md** for full launch tactics (promo codes, featuring
+nominations, review-prompt rules), the Supporter Pack and tip-jar designs with
+StoreKit 2 implementation notes, subscription structure for v2.0 sync, regional
+pricing tables, and the documented ratings-killer list.*
