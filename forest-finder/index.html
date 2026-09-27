@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT-START -->
+<title>Monte Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#EDF1EC; --surface:#F8FAF7; --ink:#18261F; --muted:#5A6B61; --line:#CBD5CD;
+  --moss:#2E5A43; --moss-soft:#D7E4DA; --bark:#7A5A40;
+  --ok:#2F7D4F; --warn:#B7791F; --bad:#B8472A; --bad-soft:#F4DCD3;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#101813; --surface:#17221B; --ink:#E3EBE5; --muted:#98A89E; --line:#2C3B32;
+    --moss:#7FC19A; --moss-soft:#1F3328; --bark:#C9A07E;
+    --ok:#6CC08D; --warn:#E0A94A; --bad:#EE7F5E; --bad-soft:#3A221A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#101813; --surface:#17221B; --ink:#E3EBE5; --muted:#98A89E; --line:#2C3B32;
+  --moss:#7FC19A; --moss-soft:#1F3328; --bark:#C9A07E;
+  --ok:#6CC08D; --warn:#E0A94A; --bad:#EE7F5E; --bad-soft:#3A221A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:1240px;margin:0 auto}
+header{padding-block:28px 12px;display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between}
+h1{font:700 clamp(28px,4vw,40px)/1.05 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 span{color:var(--moss)}
+.lede{color:var(--muted);max-width:62ch;margin:6px 0 0}
+h2{font:700 22px/1.2 var(--display);margin:0 0 4px;text-wrap:balance}
+h3{font:600 17px/1.3 var(--display);margin:0}
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-block:8px 20px;overflow-x:auto}
+nav.tabs button{font:600 15px var(--body);background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--moss)}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end;margin-bottom:16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.lbl{font:600 11px/1 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+select,input,textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;max-width:100%}
+input[type=range]{padding:0;accent-color:var(--moss)}
+.btn{background:var(--moss);color:var(--surface);border:0;border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--moss);border:1px solid var(--moss)}
+.btn.small{padding:4px 10px;font-size:13px}
+.count{font:13px var(--mono);color:var(--muted);margin-left:auto}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface)}
+th[data-dir="asc"]::after{content:" ↑"} th[data-dir="desc"]::after{content:" ↓"}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td .sub{color:var(--muted);font-size:13px}
+#prop-table td:nth-child(2){min-width:240px}
+tr.row{cursor:pointer} tr.row:hover td{background:var(--moss-soft)}
+.pill{display:inline-block;font:600 12px/1 var(--body);padding:4px 8px;border-radius:999px;white-space:nowrap}
+.risk-low{background:var(--moss-soft);color:var(--ok)}
+.risk-mid{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.risk-high{background:var(--bad-soft);color:var(--bad)}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:4px;padding:1px 6px;margin:2px 4px 0 0;color:var(--muted)}
+.meter{display:inline-flex;gap:2px;vertical-align:middle}
+.meter i{width:7px;height:14px;border-radius:2px;background:var(--line)}
+.meter i.on{background:var(--moss)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;min-width:60px;margin-top:4px}
+.bar b{display:block;height:100%;background:var(--moss)}
+.detail td{background:var(--bg)}
+.detail .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 24px;padding-block:6px}
+.detail p{margin:2px 0 0}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.links a{font-size:13px;color:var(--moss);border:1px solid var(--line);border-radius:4px;padding:3px 8px;text-decoration:none;background:var(--surface)}
+.links a:hover{border-color:var(--moss)}
+.note{font-size:13px;color:var(--muted);max-width:80ch}
+.example{font:600 10px/1 var(--mono);letter-spacing:.06em;color:var(--bark);border:1px dashed var(--bark);border-radius:3px;padding:2px 4px;margin-left:6px;vertical-align:middle}
+.score{font:700 18px var(--mono)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px}
+form.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 16px}
+form.add .wide{grid-column:1/-1}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap;grid-column:1/-1}
+details.panel summary{cursor:pointer;font:600 16px var(--display)}
+details.panel[open] summary{margin-bottom:14px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.guide ol,.guide ul{margin:8px 0 0;padding-left:20px}
+.guide li{margin-bottom:6px}
+.guide a{color:var(--moss)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:no-preference){tr.row td{transition:background .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Monte <span>Finder</span></h1>
+    <p class="lede">Dense forest areas in Spain, and a scored shortlist of fincas for sale inside them. Find the monte first, then the house.</p>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" id="tab-forests" aria-selected="true" data-panel="forests">Forests</button>
+  <button role="tab" id="tab-props" aria-selected="false" data-panel="props">Properties</button>
+  <button role="tab" id="tab-guide" aria-selected="false" data-panel="guide">Buying guide</button>
+</nav>
+
+<!-- FORESTS -->
+<section id="forests" role="tabpanel">
+  <div class="controls">
+    <div class="field"><label for="f-type">Forest type</label>
+      <select id="f-type"><option value="">All types</option></select></div>
+    <div class="field"><label for="f-dens">Min. density</label>
+      <select id="f-dens"><option value="1">Any</option><option value="3">Medium+</option><option value="4">Dense+</option><option value="5">Very dense</option></select></div>
+    <div class="field"><label for="f-risk">Max. fire risk: <span id="f-risk-v">100</span></label>
+      <input type="range" id="f-risk" min="0" max="100" step="5" value="100"></div>
+    <div class="field"><label for="f-drive">Max. drive from Madrid: <span id="f-drive-v">any</span></label>
+      <input type="range" id="f-drive" min="1" max="8" step="0.5" value="8"></div>
+    <div class="field"><label for="f-q">Search</label>
+      <input id="f-q" type="search" placeholder="Name, province, species…"></div>
+    <span class="count" id="f-count"></span>
+  </div>
+  <div class="tablebox">
+    <table id="forest-table">
+      <thead><tr>
+        <th data-k="name">Forest</th>
+        <th data-k="type">Type</th>
+        <th data-k="density">Density</th>
+        <th data-k="fire">Fire risk</th>
+        <th data-k="areaHa">Area (ha)</th>
+        <th data-k="rain">Rain (mm/yr)</th>
+        <th data-k="drive">Drive from Madrid</th>
+        <th data-k="protection">Protection</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="note">Click a row for species, buildability notes and live property searches around that forest. Areas are approximate protected-area or forest-mass figures. <b>Fire risk</b> is an editorial 0–100 estimate from regional climate, recent fire history and fuel type. No official per-forest percentage exists; check <a href="https://forest-fire.emergency.copernicus.eu/" target="_blank" rel="noopener">EFFIS</a> and your comunidad autónoma's fire-risk map before buying.</p>
+</section>
+
+<!-- PROPERTIES -->
+<section id="props" role="tabpanel" hidden>
+  <div class="controls">
+    <div class="field"><label for="p-forest">Near forest</label>
+      <select id="p-forest"><option value="">All</option></select></div>
+    <div class="field"><label for="p-max">Max. price (€)</label>
+      <input id="p-max" type="number" min="0" step="10000" placeholder="e.g. 250000"></div>
+    <div class="field"><label for="p-minf">Min. forest %</label>
+      <input id="p-minf" type="number" min="0" max="100" step="5" placeholder="e.g. 60"></div>
+    <button class="btn" id="p-add-toggle" type="button">Add a property</button>
+    <span class="count" id="p-count"></span>
+  </div>
+
+  <div class="panel" id="p-form-panel" hidden>
+    <h2 id="p-form-title">Add a property</h2>
+    <p class="note">Paste the ad link and fill what the ad says. Forest % can be checked on the <a href="https://www1.sedecatastro.gob.es/" target="_blank" rel="noopener">Catastro</a> parcel sheet (cultivo "monte alto / pinar / castaños") or on <a href="https://sigpac.mapa.gob.es/fega/visor/" target="_blank" rel="noopener">SIGPAC</a> (uso FO).</p>
+    <form class="add" id="p-form">
+      <div class="field wide"><label for="pf-title">Title</label><input id="pf-title" required placeholder="Casa de piedra con 4 ha de robledal"></div>
+      <div class="field wide"><label for="pf-url">Ad link</label><input id="pf-url" type="url" placeholder="https://www.idealista.com/inmueble/…"></div>
+      <div class="field"><label for="pf-forest">Nearest forest</label><select id="pf-forest"></select></div>
+      <div class="field"><label for="pf-town">Municipality</label><input id="pf-town"></div>
+      <div class="field"><label for="pf-price">Price (€)</label><input id="pf-price" type="number" min="0" required></div>
+      <div class="field"><label for="pf-area">Land area (ha)</label><input id="pf-area" type="number" min="0" step="0.01" required></div>
+      <div class="field"><label for="pf-fpct">Forest % of land</label><input id="pf-fpct" type="number" min="0" max="100" required></div>
+      <div class="field"><label for="pf-ftype">Forest type on the plot</label><input id="pf-ftype" placeholder="Robledal, castaños, pinar…"></div>
+      <div class="field"><label for="pf-dens">Density</label><select id="pf-dens"><option value="1">1 · scattered</option><option value="2">2 · open</option><option value="3" selected>3 · medium</option><option value="4">4 · dense</option><option value="5">5 · closed canopy</option></select></div>
+      <div class="field"><label for="pf-fire">Fire risk (0–100)</label><input id="pf-fire" type="number" min="0" max="100" placeholder="blank = use forest's"></div>
+      <div class="field"><label for="pf-house">Building</label><select id="pf-house">
+        <option value="habitable">Habitable house</option><option value="renovate" selected>House to renovate</option>
+        <option value="ruin">Ruin / borda / pallaza</option><option value="none">No building</option></select></div>
+      <div class="field"><label for="pf-m2">Built area (m²)</label><input id="pf-m2" type="number" min="0"></div>
+      <div class="field"><label for="pf-water">Water</label><select id="pf-water"><option value="1">Yes (mains, spring or well)</option><option value="0">No / unknown</option></select></div>
+      <div class="field"><label for="pf-power">Electricity</label><select id="pf-power"><option value="1">Yes</option><option value="0">No / unknown</option></select></div>
+      <div class="field"><label for="pf-road">Road access</label><select id="pf-road"><option value="1">Paved / year-round</option><option value="0">Dirt track / unknown</option></select></div>
+      <div class="field"><label for="pf-net">Internet</label><select id="pf-net"><option value="unknown">Unknown</option><option value="fibre">Fibre</option><option value="4g">4G/5G</option><option value="sat">Satellite only</option></select></div>
+      <div class="field wide"><label for="pf-notes">Notes</label><textarea id="pf-notes" rows="2" placeholder="Suelo rústico? Núcleo rural? Spring on the plot? Next visit…"></textarea></div>
+      <div class="row-actions">
+        <button class="btn" type="submit" id="pf-save">Save property</button>
+        <button class="btn ghost" type="button" id="pf-cancel">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="tablebox" style="margin-top:16px">
+    <table id="prop-table">
+      <thead><tr>
+        <th data-k="score">Fit</th>
+        <th data-k="title">Property</th>
+        <th data-k="price">Price</th>
+        <th data-k="area">Land</th>
+        <th data-k="fpct">Forest</th>
+        <th data-k="eurPerForestHa">€ / forest ha</th>
+        <th data-k="density">Density</th>
+        <th data-k="fire">Fire risk</th>
+        <th data-k="house">Building</th>
+        <th data-k="services">Services</th>
+        <th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="note"><b>Fit score</b> (0–100) = forest % ×30 + density ×20 + low fire risk ×20 + building ×15 (habitable 15, to renovate 12, ruin 8, none 0) + water, power and road access 5 each. Building new on suelo rústico is usually not allowed, so an existing house or ruin scores higher than bare land.</p>
+
+  <details class="panel" style="margin-top:16px">
+    <summary>Back up or move your list</summary>
+    <div class="stack">
+      <p class="note">Properties are saved in this browser only. Copy the JSON to keep a backup or to move the list to another device, then paste it back here.</p>
+      <textarea id="p-json" rows="6" style="font-family:var(--mono);font-size:12px;width:100%"></textarea>
+      <div class="row-actions">
+        <button class="btn small" type="button" id="p-export">Copy list as JSON</button>
+        <button class="btn small ghost" type="button" id="p-import">Replace list with pasted JSON</button>
+        <button class="btn small ghost" type="button" id="p-clear-ex">Remove example rows</button>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- GUIDE -->
+<section id="guide" role="tabpanel" hidden>
+  <div class="guide">
+    <div class="panel">
+      <h2>Before you make an offer</h2>
+      <ol>
+        <li><b>Land classification.</b> Ask the ayuntamiento for a <i>certificado urbanístico</i>. On <i>suelo rústico / no urbanizable</i>, new houses are usually banned or need huge minimum plots. Renovating an existing, legally registered building is the realistic path.</li>
+        <li><b>Is the house legal?</b> Check it appears in the <a href="https://www1.sedecatastro.gob.es/" target="_blank" rel="noopener">Catastro</a> and the Registro de la Propiedad (nota simple, ~€10). Unregistered ruins may not be rebuildable.</li>
+        <li><b>Protected area rules.</b> Inside a Parque Natural or Red Natura 2000 zone, the PORN/PRUG plan decides what you may build, cut or fence. Read it for the exact parcel.</li>
+        <li><b>Fire history.</b> Under the Ley de Montes (Ley 43/2003, art. 50) burned forest land cannot change use for 30 years. Check past fires on <a href="https://forest-fire.emergency.copernicus.eu/apps/effis.statistics/" target="_blank" rel="noopener">EFFIS</a>.</li>
+        <li><b>Monte público or vecinal?</b> Many forests are <i>montes de utilidad pública</i> or <i>montes vecinales en mano común</i> (Galicia). You can buy next to them, not in them.</li>
+        <li><b>Water.</b> Spring or well rights (<i>concesión</i> from the Confederación Hidrográfica) matter more than mains water in remote places.</li>
+        <li><b>Access and services.</b> A right of way (<i>servidumbre de paso</i>) must be registered. Check electricity connection cost and mobile coverage on site.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h2>Living in a dense forest safely</h2>
+      <ul>
+        <li><b>Defensible space.</b> Most regions require a 25–50 m cleared strip (<i>franja de protección</i>) around buildings in forest-urban interface. Galicia enforces 50 m under Ley 3/2007.</li>
+        <li><b>Species matter.</b> Beech, oak and chestnut burn far less readily than pine or eucalyptus. Atlantic broadleaf forests (Navarra, Asturias, Cantabria, País Vasco) carry the lowest risk.</li>
+        <li><b>Eucalyptus and pine plantations</b> often appear as "forest" in ads. They are high fire risk and low habitat value. Ask what the trees are.</li>
+        <li><b>Insurance.</b> Get a fire insurance quote before buying. Refusal or a very high premium tells you something.</li>
+        <li><b>Winter.</b> North-facing slopes in Cantabrian valleys get little sun from November to February. Visit in winter.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>Where to search</h2>
+      <ul>
+        <li><a href="https://www.idealista.com/" target="_blank" rel="noopener">Idealista</a>: filter "Terrenos" or "Casas de pueblo/rústicas", then search the municipality names from the Forests tab.</li>
+        <li><a href="https://www.fotocasa.es/" target="_blank" rel="noopener">Fotocasa</a>: section "Fincas rústicas" by province.</li>
+        <li><a href="https://www.milanuncios.com/venta-de-fincas/" target="_blank" rel="noopener">Milanuncios</a>: private sellers, keyword "bosque" or "monte".</li>
+        <li><a href="https://www.cocampo.com/" target="_blank" rel="noopener">Cocampo</a>: specialist in fincas forestales and rústicas.</li>
+        <li><a href="https://www.aldeasabandonadas.com/" target="_blank" rel="noopener">Aldeas Abandonadas</a>: villages, ruins and pallazas in the north-west.</li>
+        <li><a href="https://www.agroanuncios.es/anuncios/fincas-rusticas/" target="_blank" rel="noopener">AgroAnuncios</a>: rural plots, many with robledal or castaños.</li>
+        <li>Galicia: the <a href="https://bantegal.com/" target="_blank" rel="noopener">Banco de Terras</a> lists public and abandoned plots.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>Map tools</h2>
+      <ul>
+        <li><a href="https://sigpac.mapa.gob.es/fega/visor/" target="_blank" rel="noopener">SIGPAC viewer</a>: land use per parcel (FO = forestal).</li>
+        <li><a href="https://www.miteco.gob.es/es/biodiversidad/servicios/banco-datos-naturaleza/informacion-disponible/mfe50.html" target="_blank" rel="noopener">Mapa Forestal de España</a>: species and canopy cover (fracción de cabida cubierta).</li>
+        <li><a href="https://www.ign.es/iberpix/visor/" target="_blank" rel="noopener">Iberpix (IGN)</a>: aerial photos, including historical ones to see how the forest has changed.</li>
+        <li><a href="https://www.miteco.gob.es/es/biodiversidad/servicios/banco-datos-naturaleza/informacion-disponible/enp.html" target="_blank" rel="noopener">Protected areas (ENP / Natura 2000)</a> boundaries.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ---- Forest data (approximate; verify before relying on it) ----
+// density: 1 scattered … 5 closed canopy. fire: editorial 0–100 risk estimate. drive: hours by car from Madrid (null = island).
+const FORESTS = [
+ {id:"irati",name:"Selva de Irati",prov:"Navarra",type:"Beech–fir",species:"Haya (Fagus sylvatica), abeto (Abies alba)",density:5,fire:10,areaHa:17000,alt:"800–1,500 m",rain:1800,protection:"Reservas naturales + ZEC",drive:4.5,towns:["Ochagavía","Orbaizeta","Aribe","Garralda"],notes:"Second-largest beech–fir forest in Europe. Very wet, very low fire risk. Houses come up in the Aezkoa and Salazar valley villages."},
+ {id:"aralar",name:"Aralar & Aiako Harria",prov:"Gipuzkoa",type:"Beech",species:"Haya, roble, pino plantations at lower levels",density:4,fire:15,areaHa:17800,alt:"200–1,430 m",rain:2000,protection:"Parque Natural",drive:4.5,towns:["Lekunberri","Amezketa","Oiartzun","Ataun"],notes:"Rainiest part of the peninsula. Caseríos with woodland are common but pricey. Close to San Sebastián and France."},
+ {id:"muniellos",name:"Muniellos",prov:"Asturias",type:"Oak",species:"Roble albar (Quercus petraea), roble carballo, abedul, haya",density:5,fire:20,areaHa:5900,alt:"600–1,600 m",rain:1500,protection:"Reserva Integral, Biosfera",drive:5.5,towns:["Cangas del Narcea","Ibias","Degaña"],notes:"Largest oak forest in Spain. The reserve itself is closed to building. Look at the villages of the Fuentes del Narcea park around it."},
+ {id:"somiedo",name:"Somiedo",prov:"Asturias",type:"Beech & oak",species:"Haya, roble, abedul, acebo",density:4,fire:20,areaHa:29100,alt:"400–2,194 m",rain:1300,protection:"Parque Natural, Biosfera",drive:4.5,towns:["Pola de Somiedo","Teverga","Belmonte de Miranda"],notes:"Brown bear country. Old teitos and brañas occasionally for sale; renovation rules are strict but possible."},
+ {id:"picos",name:"Picos de Europa",prov:"Asturias",type:"Beech & oak",species:"Haya, roble, tilo, castaño",density:3,fire:20,areaHa:67000,alt:"75–2,650 m",rain:1600,protection:"Parque Nacional",drive:5,towns:["Cangas de Onís","Potes","Posada de Valdeón","Cabrales"],notes:"Mixed meadow, rock and forest rather than continuous woodland. Liébana (Potes) has drier microclimate and oak–chestnut slopes."},
+ {id:"saja",name:"Saja-Besaya",prov:"Cantabria",type:"Beech & oak",species:"Haya, roble, abedul",density:4,fire:25,areaHa:24500,alt:"150–2,000 m",rain:1400,protection:"Parque Natural",drive:4,towns:["Cabuérniga","Ruente","Los Tojos","Arenas de Iguña"],notes:"Some of Spain's best-kept beech woods, with village houses in the Cabuérniga valley. Closer to Madrid than Asturias."},
+ {id:"urdaibai",name:"Urdaibai",prov:"Bizkaia",type:"Holm oak & mixed",species:"Encina cantábrica, roble; many pine and eucalyptus plantations",density:4,fire:20,areaHa:22000,alt:"0–800 m",rain:1300,protection:"Reserva de la Biosfera",drive:4.5,towns:["Gernika","Busturia","Ea","Mundaka"],notes:"Coastal. A lot of what looks like forest is plantation; check species on each plot."},
+ {id:"eume",name:"Fragas do Eume",prov:"A Coruña",type:"Atlantic mixed",species:"Carballo (Q. robur), castaño, abedul, ferns",density:5,fire:55,areaHa:9100,alt:"0–600 m",rain:1700,protection:"Parque Natural",drive:6,towns:["Pontedeume","Monfero","A Capela","Cabanas"],notes:"One of Europe's best-preserved Atlantic coastal forests. Hit by fire in 2012; surrounding hills are eucalyptus-heavy."},
+ {id:"ancares",name:"Os Ancares",prov:"Lugo",type:"Oak & birch",species:"Carballo, abedul, acebo, soutos de castaño",density:4,fire:45,areaHa:53000,alt:"500–1,969 m",rain:1700,protection:"Reserva de la Biosfera, ZEC",drive:4.5,towns:["Navia de Suarna","Cervantes","Vega de Espinareda","Candín"],notes:"Pallozas and stone houses in near-empty villages, often at low prices. Remote; winters are long."},
+ {id:"courel",name:"Serra do Courel",prov:"Lugo",type:"Oak & chestnut",species:"Devesas de roble, castaño, tejo, acebo",density:5,fire:50,areaHa:21000,alt:"400–1,640 m",rain:1500,protection:"Geoparque UNESCO, ZEC",drive:5,towns:["Folgoso do Courel","Seoane","Quiroga"],notes:"Devesa da Rogueira is one of Galicia's densest forests. The 2022 fires burned part of the range; check the exact plot."},
+ {id:"ordesa",name:"Ordesa y Monte Perdido",prov:"Huesca",type:"Beech–fir & pine",species:"Haya, abeto, pino silvestre, pino negro",density:4,fire:20,areaHa:15600,alt:"700–3,355 m",rain:1800,protection:"Parque Nacional",drive:5,towns:["Torla","Broto","Fanlo","Bielsa"],notes:"Old bordas in the Broto and Sobrarbe valleys are the usual route. High prices near Torla."},
+ {id:"urbion",name:"Pinares de Urbión",prov:"Soria",type:"Scots pine",species:"Pino silvestre, rebollo, haya in pockets",density:4,fire:35,areaHa:100000,alt:"1,000–2,200 m",rain:900,protection:"Parque Natural Laguna Negra + montes públicos",drive:2.5,towns:["Covaleda","Duruelo de la Sierra","Vinuesa","Quintanar de la Sierra"],notes:"One of Europe's largest continuous pine forests, well managed by the villages. Most forest is communal; buy a village house on its edge. Cold winters."},
+ {id:"valsain",name:"Pinar de Valsaín",prov:"Segovia",type:"Scots pine",species:"Pino silvestre, roble melojo, acebo",density:4,fire:50,areaHa:10600,alt:"1,100–2,200 m",rain:1000,protection:"Parque Nacional Guadarrama",drive:1.2,towns:["Valsaín","La Granja","Navafría","El Espinar"],notes:"State-owned forest, so you buy in the villages around it. Closest dense forest to Madrid; prices reflect that."},
+ {id:"montejo",name:"Hayedo de Montejo",prov:"Madrid",type:"Beech",species:"Haya, roble melojo, acebo",density:4,fire:40,areaHa:250,alt:"1,250–1,500 m",rain:900,protection:"UNESCO, Reserva Biosfera Sierra del Rincón",drive:1.3,towns:["Montejo de la Sierra","La Hiruela","Horcajuelo de la Sierra","Prádena del Rincón"],notes:"Small beech wood, but the Sierra del Rincón around it has oak forest and cheap-ish stone houses."},
+ {id:"tejera",name:"Tejera Negra",prov:"Guadalajara",type:"Beech & pine",species:"Haya, roble, pino silvestre",density:4,fire:45,areaHa:1600,alt:"1,200–2,000 m",rain:900,protection:"Parque Natural Sierra Norte",drive:2,towns:["Cantalojas","Majaelrayo","Valverde de los Arroyos","Campillo de Ranas"],notes:"Pueblos de arquitectura negra. Very low population, stone houses for renovation appear regularly."},
+ {id:"francia",name:"Sierra de Francia",prov:"Salamanca",type:"Chestnut & oak",species:"Castaño, roble melojo, madroño, alcornoque",density:4,fire:55,areaHa:32300,alt:"400–1,723 m",rain:1000,protection:"Parque Natural Las Batuecas",drive:3,towns:["La Alberca","Mogarraz","Miranda del Castañar","Sotoserrano"],notes:"Terraced chestnut and oak slopes with vineyards. Mild; some fire risk on the south side."},
+ {id:"tietar",name:"Valle del Tiétar",prov:"Ávila",type:"Pine & chestnut",species:"Pino resinero, pino laricio, castaño, roble",density:3,fire:70,areaHa:86000,alt:"400–2,592 m",rain:1200,protection:"Parque Regional Sierra de Gredos (part), ZEPA",drive:2,towns:["Arenas de San Pedro","Candeleda","Piedralaves","El Arenal"],notes:"Green and close to Madrid, but pine-dominated with hot summers. Several large fires in recent decades."},
+ {id:"montseny",name:"Montseny",prov:"Barcelona",type:"Beech & holm oak",species:"Haya, encina, abeto, alcornoque",density:4,fire:55,areaHa:31000,alt:"200–1,706 m",rain:1000,protection:"Parque Natural, Biosfera",drive:6.5,towns:["Viladrau","Montseny","Arbúcies","Seva"],notes:"Masías surrounded by forest, close to Barcelona and Girona. High prices, strict park rules."},
+ {id:"garrotxa",name:"La Garrotxa",prov:"Girona",type:"Beech & oak",species:"Haya (Fageda d'en Jordà), roble, encina",density:4,fire:35,areaHa:15000,alt:"200–1,100 m",rain:1000,protection:"Parque Natural Zona Volcànica",drive:7,towns:["Olot","Santa Pau","Les Planes d'Hostoles","Sant Feliu de Pallerols"],notes:"Wet volcanic valleys with beech on lava. Masías to restore appear, but demand is high."},
+ {id:"cazorla",name:"Sierras de Cazorla y Segura",prov:"Jaén",type:"Pine",species:"Pino laricio, pino carrasco, pino negral",density:4,fire:70,areaHa:209900,alt:"460–2,107 m",rain:900,protection:"Parque Natural, Biosfera",drive:4,towns:["Cazorla","Santiago de la Espada","Hornos","Pontones"],notes:"Spain's largest protected area. Dense pine but Mediterranean summers; the 2017 and 2022 seasons had large fires nearby."},
+ {id:"aracena",name:"Sierra de Aracena",prov:"Huelva",type:"Chestnut & cork oak",species:"Castaño, alcornoque, encina, quejigo",density:3,fire:65,areaHa:186800,alt:"200–960 m",rain:1000,protection:"Parque Natural, Biosfera",drive:5,towns:["Aracena","Alájar","Castaño del Robledo","Galaroza"],notes:"Wetter than the rest of Andalucía. Chestnut groves with houses are a classic buy. More dehesa than closed forest."},
+ {id:"alcornocales",name:"Los Alcornocales",prov:"Cádiz",type:"Cork oak",species:"Alcornoque, quejigo; laurel and ferns in the canutos",density:4,fire:65,areaHa:167800,alt:"0–1,092 m",rain:1000,protection:"Parque Natural",drive:6.5,towns:["Jimena de la Frontera","Alcalá de los Gazules","Castellar","Cortes de la Frontera"],notes:"Largest cork oak forest in Europe. Big estates dominate; small fincas with cortijos come up around Jimena."},
+ {id:"espadan",name:"Serra d'Espadà",prov:"Castellón",type:"Cork oak & pine",species:"Alcornoque, pino rodeno, encina",density:3,fire:80,areaHa:31200,alt:"100–1,106 m",rain:600,protection:"Parque Natural",drive:4,towns:["Eslida","Aín","Almedíjar","Chóvar"],notes:"Only large cork forest in eastern Spain. Dry and fire-prone; high risk for a forest home."},
+ {id:"garajonay",name:"Garajonay",prov:"Santa Cruz de Tenerife",type:"Laurel forest",species:"Laurisilva: laurel, til, viñátigo, brezo",density:5,fire:50,areaHa:4000,alt:"650–1,487 m",rain:900,protection:"Parque Nacional, UNESCO",drive:null,towns:["Hermigua","Vallehermoso","Agulo","Alajeró"],notes:"Fog-fed relict forest on La Gomera. The 2012 fire burned a large part. Farmhouses in Hermigua and Vallehermoso valleys."}
+];
+
+// Example rows only. They illustrate the scoring and point to live searches, not real ads.
+const EXAMPLE_PROPS = [
+ {id:"ex1",example:true,title:"Example · Stone house to renovate with oak wood",url:"",forest:"somiedo",town:"Teverga",price:95000,area:3.2,fpct:75,ftype:"Robledal y castaños",density:4,fire:null,house:"renovate",m2:140,water:1,power:1,road:0,net:"4g",notes:"Example row. Replace with a real ad."},
+ {id:"ex2",example:true,title:"Example · Borda with pine and beech",url:"",forest:"ordesa",town:"Broto",price:210000,area:1.5,fpct:60,ftype:"Pino silvestre y haya",density:3,fire:null,house:"ruin",m2:90,water:1,power:0,road:1,net:"unknown",notes:"Example row."},
+ {id:"ex3",example:true,title:"Example · Village house on the edge of the pine forest",url:"",forest:"urbion",town:"Covaleda",price:130000,area:0.4,fpct:40,ftype:"Pinar",density:4,fire:null,house:"habitable",m2:180,water:1,power:1,road:1,net:"fibre",notes:"Example row."}
+];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => n == null || isNaN(n) ? "–" : Number(n).toLocaleString("es-ES");
+const byId = Object.fromEntries(FORESTS.map(f => [f.id, f]));
+const DENS_LBL = ["","scattered","open","medium","dense","closed canopy"];
+const HOUSE_LBL = {habitable:"Habitable",renovate:"To renovate",ruin:"Ruin",none:"None"};
+const HOUSE_PTS = {habitable:15,renovate:12,ruin:8,none:0};
+
+function store(key, val){ try{ if(val===undefined) return JSON.parse(localStorage.getItem(key)); localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2200); }
+const riskPill = v => `<span class="pill ${v<35?"risk-low":v<60?"risk-mid":"risk-high"}">${v} · ${v<35?"low":v<60?"moderate":"high"}</span>`;
+const meter = d => `<span class="meter" title="${DENS_LBL[d]}">${[1,2,3,4,5].map(i=>`<i class="${i<=d?"on":""}"></i>`).join("")}</span>`;
+
+function searchLinks(f){
+  const q = t => "https://www.google.com/search?q=" + encodeURIComponent(t);
+  const place = f.towns.slice(0,3).map(t=>`"${t}"`).join(" OR ");
+  return [
+    ["Idealista", q(`site:idealista.com (finca OR casa) (bosque OR monte) (${place})`)],
+    ["Fotocasa", q(`site:fotocasa.es finca rústica ${f.prov} (${place})`)],
+    ["Milanuncios", q(`site:milanuncios.com finca bosque ${f.prov}`)],
+    ["Cocampo", q(`site:cocampo.com finca forestal ${f.prov}`)],
+    ["Aldeas Abandonadas", q(`site:aldeasabandonadas.com ${f.prov}`)],
+    ["Map", `https://www.openstreetmap.org/search?query=${encodeURIComponent(f.towns[0]+", "+f.prov)}`]
+  ];
+}
+
+// ---- Tabs ----
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.panel)));
+function showTab(id){
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.panel===id));
+  document.querySelectorAll("[role=tabpanel]").forEach(p => p.hidden = p.id!==id);
+  store("mf-tab", id);
+}
+
+// ---- Forests ----
+let fSort = {k:"density",dir:"desc"}, openForest = null;
+[...new Set(FORESTS.map(f=>f.type))].sort().forEach(t => $("#f-type").insertAdjacentHTML("beforeend", `<option>${esc(t)}</option>`));
+["#f-type","#f-dens","#f-risk","#f-drive","#f-q"].forEach(s => $(s).addEventListener("input", renderForests));
+function cmp(a,b,k,dir){ const x=a[k], y=b[k]; const r = x==null ? 1 : y==null ? -1 : typeof x==="string" ? x.localeCompare(y) : x-y; return dir==="asc"?r:-r; }
+function renderForests(){
+  const type=$("#f-type").value, dens=+$("#f-dens").value, risk=+$("#f-risk").value, drive=+$("#f-drive").value, q=$("#f-q").value.trim().toLowerCase();
+  $("#f-risk-v").textContent = risk; $("#f-drive-v").textContent = drive>=8 ? "any" : drive+" h";
+  const rows = FORESTS.filter(f => (!type||f.type===type) && f.density>=dens && f.fire<=risk && (drive>=8 || (f.drive!=null && f.drive<=drive))
+    && (!q || [f.name,f.prov,f.species,f.type,...f.towns].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=> cmp(a,b,fSort.k,fSort.dir) || a.fire-b.fire);
+  $("#f-count").textContent = `${rows.length} of ${FORESTS.length} forests`;
+  $("#forest-table tbody").innerHTML = rows.map(f => `
+    <tr class="row" data-id="${f.id}" tabindex="0">
+      <td><b>${esc(f.name)}</b><div class="sub">${esc(f.prov)}</div></td>
+      <td>${esc(f.type)}</td>
+      <td>${meter(f.density)}<div class="sub">${DENS_LBL[f.density]}</div></td>
+      <td>${riskPill(f.fire)}</td>
+      <td class="num">${fmt(f.areaHa)}</td>
+      <td class="num">${fmt(f.rain)}</td>
+      <td class="num">${f.drive==null?"island":f.drive+" h"}</td>
+      <td>${esc(f.protection)}</td>
+    </tr>${openForest===f.id ? forestDetail(f) : ""}`).join("") || `<tr><td colspan="8">No forests match. Loosen a filter.</td></tr>`;
+  markSort("#forest-table", fSort);
+}
+function forestDetail(f){
+  const n = props().filter(p=>p.forest===f.id).length;
+  return `<tr class="detail"><td colspan="8"><div class="grid">
+    <div><span class="lbl">Species</span><p>${esc(f.species)}</p></div>
+    <div><span class="lbl">Altitude</span><p>${esc(f.alt)}</p></div>
+    <div><span class="lbl">Villages to search</span><p>${f.towns.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</p></div>
+    <div><span class="lbl">Notes</span><p>${esc(f.notes)}</p></div>
+    <div style="grid-column:1/-1"><span class="lbl">Search properties around ${esc(f.name)}</span>
+      <div class="links">${searchLinks(f).map(([l,u])=>`<a href="${u}" target="_blank" rel="noopener">${l} ↗</a>`).join("")}
+      <a href="#props" data-goto="${f.id}">Your shortlist here (${n})</a></div></div>
+  </div></td></tr>`;
+}
+$("#forest-table tbody").addEventListener("click", e => {
+  const g = e.target.closest("[data-goto]");
+  if(g){ e.preventDefault(); $("#p-forest").value=g.dataset.goto; showTab("props"); renderProps(); return; }
+  if(e.target.closest("a")) return;
+  const tr = e.target.closest("tr.row"); if(!tr) return;
+  openForest = openForest===tr.dataset.id ? null : tr.dataset.id; renderForests();
+});
+$("#forest-table tbody").addEventListener("keydown", e => { if(e.key==="Enter" && e.target.matches("tr.row")) e.target.click(); });
+
+function markSort(tbl, s){ document.querySelectorAll(tbl+" th").forEach(th => th.dataset.k===s.k ? th.dataset.dir=s.dir : th.removeAttribute("data-dir")); }
+function bindSort(tbl, s, render){
+  document.querySelectorAll(tbl+" th[data-k]").forEach(th => th.addEventListener("click", () => {
+    if(s.k===th.dataset.k) s.dir = s.dir==="asc"?"desc":"asc"; else { s.k=th.dataset.k; s.dir = ["name","title","type","protection","house"].includes(s.k)?"asc":"desc"; }
+    render();
+  }));
+}
+bindSort("#forest-table", fSort, renderForests);
+
+// ---- Properties ----
+let pSort = {k:"score",dir:"desc"}, editing = null;
+function props(){ const s = store("mf-props"); return Array.isArray(s) ? s : EXAMPLE_PROPS.slice(); }
+function saveProps(list){ store("mf-props", list); }
+function enrich(p){
+  const f = byId[p.forest];
+  const fire = p.fire ?? f?.fire ?? 50;
+  const forestHa = p.area * p.fpct/100;
+  const score = Math.round(p.fpct/100*30 + p.density/5*20 + (100-fire)/100*20 + (HOUSE_PTS[p.house]||0) + 5*(+p.water) + 5*(+p.power) + 5*(+p.road));
+  return {...p, fire, forestHa, eurPerForestHa: forestHa>0 ? Math.round(p.price/forestHa) : null, score, services: +p.water + +p.power + +p.road};
+}
+FORESTS.forEach(f => {
+  $("#p-forest").insertAdjacentHTML("beforeend", `<option value="${f.id}">${esc(f.name)}</option>`);
+  $("#pf-forest").insertAdjacentHTML("beforeend", `<option value="${f.id}">${esc(f.name)} (${esc(f.prov)})</option>`);
+});
+["#p-forest","#p-max","#p-minf"].forEach(s => $(s).addEventListener("input", renderProps));
+function renderProps(){
+  const fid=$("#p-forest").value, max=+$("#p-max").value||Infinity, minf=+$("#p-minf").value||0;
+  const all = props().map(enrich);
+  const rows = all.filter(p => (!fid||p.forest===fid) && p.price<=max && p.fpct>=minf).sort((a,b)=>cmp(a,b,pSort.k,pSort.dir));
+  $("#p-count").textContent = `${rows.length} of ${all.length} properties`;
+  $("#prop-table tbody").innerHTML = rows.map(p => {
+    const f = byId[p.forest];
+    const svc = [p.water?"water":null,p.power?"power":null,p.road?"road":null].filter(Boolean);
+    return `<tr>
+      <td class="score">${p.score}</td>
+      <td>${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--moss);font-weight:600">${esc(p.title)} ↗</a>` : `<b>${esc(p.title)}</b>`}${p.example?'<span class="example">EXAMPLE</span>':""}
+        <div class="sub">${esc(p.town||"")}${f?` · near ${esc(f.name)}`:""}${p.ftype?` · ${esc(p.ftype)}`:""}</div>
+        ${p.notes?`<div class="sub">${esc(p.notes)}</div>`:""}</td>
+      <td class="num">€${fmt(p.price)}</td>
+      <td class="num">${fmt(p.area)} ha${p.m2?`<div class="sub">${fmt(p.m2)} m² built</div>`:""}</td>
+      <td class="num">${p.fpct}%<div class="bar"><b style="width:${p.fpct}%"></b></div><div class="sub">${fmt(Math.round(p.forestHa*100)/100)} ha</div></td>
+      <td class="num">${p.eurPerForestHa?"€"+fmt(p.eurPerForestHa):"–"}</td>
+      <td>${meter(p.density)}</td>
+      <td>${riskPill(p.fire)}</td>
+      <td>${HOUSE_LBL[p.house]||"–"}</td>
+      <td>${svc.map(s=>`<span class="tag">${s}</span>`).join("")||'<span class="sub">none known</span>'}${p.net&&p.net!=="unknown"?`<span class="tag">${p.net}</span>`:""}</td>
+      <td style="white-space:nowrap"><button class="btn small ghost" data-edit="${p.id}" type="button">Edit</button> <button class="btn small ghost" data-del="${p.id}" type="button">Delete</button></td>
+    </tr>`;}).join("") || `<tr><td colspan="11">No properties yet. Open a forest in the Forests tab, use its search links, and add the ads you like here.</td></tr>`;
+  markSort("#prop-table", pSort);
+}
+bindSort("#prop-table", pSort, renderProps);
+
+const FIELDS = ["title","url","forest","town","price","area","fpct","ftype","dens","fire","house","m2","water","power","road","net","notes"];
+function openForm(p){
+  editing = p?.id || null;
+  $("#p-form-title").textContent = p ? "Edit property" : "Add a property";
+  $("#p-form").reset();
+  if(p) FIELDS.forEach(k => { const el=$("#pf-"+(k==="fpct"?"fpct":k)); const v = k==="dens"?p.density:p[k]; if(el && v!=null) el.value=v; });
+  else if($("#p-forest").value) $("#pf-forest").value = $("#p-forest").value;
+  $("#p-form-panel").hidden=false; $("#pf-title").focus();
+}
+$("#p-add-toggle").addEventListener("click", () => $("#p-form-panel").hidden ? openForm() : ($("#p-form-panel").hidden=true));
+$("#pf-cancel").addEventListener("click", () => { $("#p-form-panel").hidden=true; editing=null; });
+$("#p-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = id => $("#pf-"+id).value.trim(), n = id => v(id)==="" ? null : +v(id);
+  const rec = {id: editing || "p"+Date.now(), title:v("title"), url:v("url"), forest:v("forest"), town:v("town"), price:n("price"), area:n("area"), fpct:n("fpct"),
+    ftype:v("ftype"), density:+v("dens"), fire:n("fire"), house:v("house"), m2:n("m2"), water:+v("water"), power:+v("power"), road:+v("road"), net:v("net"), notes:v("notes")};
+  const list = props(); const i = list.findIndex(p=>p.id===rec.id);
+  if(i>=0) list[i]=rec; else list.push(rec);
+  saveProps(list); $("#p-form-panel").hidden=true; editing=null; renderProps(); renderForests(); toast("Property saved");
+});
+$("#prop-table tbody").addEventListener("click", e => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+  if(ed) openForm(props().find(p=>p.id===ed.dataset.edit));
+  if(del){
+    if(del.dataset.armed){ saveProps(props().filter(p=>p.id!==del.dataset.del)); renderProps(); toast("Property deleted"); }
+    else { del.dataset.armed="1"; del.textContent="Confirm"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.armed; del.textContent="Delete"; } },3000); }
+  }
+});
+$("#p-export").addEventListener("click", () => {
+  const txt = JSON.stringify(props(), null, 1); $("#p-json").value = txt;
+  (navigator.clipboard?.writeText(txt) ?? Promise.reject()).then(()=>toast("List copied"), ()=>{ $("#p-json").select(); toast("Select all and copy the text above"); });
+});
+$("#p-import").addEventListener("click", () => {
+  try{ const list = JSON.parse($("#p-json").value); if(!Array.isArray(list)) throw 0; saveProps(list); renderProps(); toast(`Imported ${list.length} properties`); }
+  catch(e){ toast("That isn't a valid list. Paste JSON copied from this page."); }
+});
+$("#p-clear-ex").addEventListener("click", () => { saveProps(props().filter(p=>!p.example)); renderProps(); toast("Example rows removed"); });
+
+// ---- Boot ----
+renderForests(); renderProps();
+const startTab = location.hash.slice(1) || store("mf-tab");
+if(["forests","props","guide"].includes(startTab)) showTab(startTab);
+</script>
+<!-- ARTIFACT-END -->
+</body>
+</html>
