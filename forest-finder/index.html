@@ -96,6 +96,29 @@ details.panel[open] summary{margin-bottom:14px}
 .guide a{color:var(--moss)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px}
 [hidden]{display:none!important}
+.status{font:600 11px/1 var(--body);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.status.contacted{color:var(--warn);border-color:var(--warn)} .status.visited{color:var(--ok);border-color:var(--ok)} .status.discarded{text-decoration:line-through}
+tr.discarded td{opacity:.55}
+.checks{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:13px}
+.checks label{display:inline-flex;gap:4px;align-items:center;cursor:pointer;color:var(--muted)}
+.checks input{accent-color:var(--moss);padding:0}
+.checks label.done{color:var(--ink)}
+.src{font-size:12px;color:var(--bark)}
+@media (max-width:760px){
+  .tablebox{border:0;background:none;overflow:visible}
+  #forest-table thead,#prop-table thead{display:none}
+  #forest-table,#prop-table,#forest-table tbody,#prop-table tbody{display:block}
+  #forest-table tr,#prop-table tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
+  #forest-table td,#prop-table td{border:0;padding:0;min-width:0}
+  #forest-table td:first-child,#prop-table td:nth-child(2){grid-column:1/-1;order:-1}
+  #prop-table td:first-child{order:-2;grid-column:1/-1}
+  #prop-table td:first-child::before{content:"Fit ";font:600 11px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+  #forest-table td[data-l]::before,#prop-table td[data-l]::before{content:attr(data-l);display:block;font:600 10px/1.4 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  #prop-table td:last-child{grid-column:1/-1}
+  #forest-table tr.detail{display:block;margin-top:-8px}
+  #forest-table tr.detail td{display:block}
+  .count{margin-left:0;width:100%}
+}
 @media (prefers-reduced-motion:no-preference){tr.row td{transition:background .15s}}
 </style>
 </head>
@@ -177,6 +200,10 @@ details.panel[open] summary{margin-bottom:14px}
       <div class="field"><label for="pf-house">Building</label><select id="pf-house">
         <option value="habitable">Habitable house</option><option value="renovate" selected>House to renovate</option>
         <option value="ruin">Ruin / borda / pallaza</option><option value="none">No building</option></select></div>
+      <div class="field"><label for="pf-land">Land classification</label><select id="pf-land">
+        <option value="unknown">Unknown</option><option value="urbano">Suelo urbano</option><option value="nucleo">Núcleo rural</option><option value="rustico">Suelo rústico</option></select></div>
+      <div class="field"><label for="pf-status">Status</label><select id="pf-status">
+        <option value="new">To review</option><option value="contacted">Contacted</option><option value="visited">Visited</option><option value="discarded">Discarded</option></select></div>
       <div class="field"><label for="pf-m2">Built area (m²)</label><input id="pf-m2" type="number" min="0"></div>
       <div class="field"><label for="pf-water">Water</label><select id="pf-water"><option value="1">Yes (mains, spring or well)</option><option value="0">No / unknown</option></select></div>
       <div class="field"><label for="pf-power">Electricity</label><select id="pf-power"><option value="1">Yes</option><option value="0">No / unknown</option></select></div>
@@ -201,7 +228,7 @@ details.panel[open] summary{margin-bottom:14px}
         <th data-k="eurPerForestHa">€ / forest ha</th>
         <th data-k="density">Density</th>
         <th data-k="fire">Fire risk</th>
-        <th data-k="house">Building</th>
+        <th data-k="house">Building & land</th>
         <th data-k="services">Services</th>
         <th></th>
       </tr></thead>
@@ -282,30 +309,44 @@ const FORESTS = [
  {id:"irati",name:"Selva de Irati",prov:"Navarra",type:"Beech–fir",species:"Haya (Fagus sylvatica), abeto (Abies alba)",density:5,fire:10,areaHa:17000,alt:"800–1,500 m",rain:1800,protection:"Reservas naturales + ZEC",drive:4.5,towns:["Ochagavía","Orbaizeta","Aribe","Garralda"],notes:"Second-largest beech–fir forest in Europe. Very wet, very low fire risk. Houses come up in the Aezkoa and Salazar valley villages."},
  {id:"aralar",name:"Aralar & Aiako Harria",prov:"Gipuzkoa",type:"Beech",species:"Haya, roble, pino plantations at lower levels",density:4,fire:15,areaHa:17800,alt:"200–1,430 m",rain:2000,protection:"Parque Natural",drive:4.5,towns:["Lekunberri","Amezketa","Oiartzun","Ataun"],notes:"Rainiest part of the peninsula. Caseríos with woodland are common but pricey. Close to San Sebastián and France."},
  {id:"muniellos",name:"Muniellos",prov:"Asturias",type:"Oak",species:"Roble albar (Quercus petraea), roble carballo, abedul, haya",density:5,fire:20,areaHa:5900,alt:"600–1,600 m",rain:1500,protection:"Reserva Integral, Biosfera",drive:5.5,towns:["Cangas del Narcea","Ibias","Degaña"],notes:"Largest oak forest in Spain. The reserve itself is closed to building. Look at the villages of the Fuentes del Narcea park around it."},
+ {id:"redes",name:"Redes",prov:"Asturias",type:"Beech",species:"Haya, roble, abedul, castaño in the valleys",density:5,fire:20,areaHa:37700,alt:"330–2,104 m",rain:1600,protection:"Parque Natural, Biosfera",drive:5,towns:["Caso","Sobrescobio","Piloña","Laviana"],notes:"Asturias' largest beech forests. Piloña, on its edge, has cheaper village plots and is 40 min from Oviedo."},
  {id:"somiedo",name:"Somiedo",prov:"Asturias",type:"Beech & oak",species:"Haya, roble, abedul, acebo",density:4,fire:20,areaHa:29100,alt:"400–2,194 m",rain:1300,protection:"Parque Natural, Biosfera",drive:4.5,towns:["Pola de Somiedo","Teverga","Belmonte de Miranda"],notes:"Brown bear country. Old teitos and brañas occasionally for sale; renovation rules are strict but possible."},
  {id:"picos",name:"Picos de Europa",prov:"Asturias",type:"Beech & oak",species:"Haya, roble, tilo, castaño",density:3,fire:20,areaHa:67000,alt:"75–2,650 m",rain:1600,protection:"Parque Nacional",drive:5,towns:["Cangas de Onís","Potes","Posada de Valdeón","Cabrales"],notes:"Mixed meadow, rock and forest rather than continuous woodland. Liébana (Potes) has drier microclimate and oak–chestnut slopes."},
  {id:"saja",name:"Saja-Besaya",prov:"Cantabria",type:"Beech & oak",species:"Haya, roble, abedul",density:4,fire:25,areaHa:24500,alt:"150–2,000 m",rain:1400,protection:"Parque Natural",drive:4,towns:["Cabuérniga","Ruente","Los Tojos","Arenas de Iguña"],notes:"Some of Spain's best-kept beech woods, with village houses in the Cabuérniga valley. Closer to Madrid than Asturias."},
+ {id:"ason",name:"Collados del Asón",prov:"Cantabria",type:"Beech & oak",species:"Haya, roble, encina cantábrica on limestone",density:4,fire:25,areaHa:4700,alt:"300–1,500 m",rain:1800,protection:"Parque Natural",drive:4,towns:["Soba","Arredondo","Ruesga","Ramales de la Victoria"],notes:"Pasiego valleys with cabañas pasiegas for renovation. Very wet and quiet."},
+ {id:"mena",name:"Valle de Mena",prov:"Burgos",type:"Oak & beech",species:"Roble, haya, encina, castaño",density:4,fire:30,areaHa:null,alt:"200–1,300 m",rain:1300,protection:"ZEC Montes de Ordunte (part)",drive:3.5,towns:["Villasana de Mena","Vallejuelo","Nava de Ordunte"],notes:"Atlantic climate on the Castilla side, 45 min from Bilbao. Cheaper than Bizkaia."},
  {id:"urdaibai",name:"Urdaibai",prov:"Bizkaia",type:"Holm oak & mixed",species:"Encina cantábrica, roble; many pine and eucalyptus plantations",density:4,fire:20,areaHa:22000,alt:"0–800 m",rain:1300,protection:"Reserva de la Biosfera",drive:4.5,towns:["Gernika","Busturia","Ea","Mundaka"],notes:"Coastal. A lot of what looks like forest is plantation; check species on each plot."},
  {id:"eume",name:"Fragas do Eume",prov:"A Coruña",type:"Atlantic mixed",species:"Carballo (Q. robur), castaño, abedul, ferns",density:5,fire:55,areaHa:9100,alt:"0–600 m",rain:1700,protection:"Parque Natural",drive:6,towns:["Pontedeume","Monfero","A Capela","Cabanas"],notes:"One of Europe's best-preserved Atlantic coastal forests. Hit by fire in 2012; surrounding hills are eucalyptus-heavy."},
  {id:"ancares",name:"Os Ancares",prov:"Lugo",type:"Oak & birch",species:"Carballo, abedul, acebo, soutos de castaño",density:4,fire:45,areaHa:53000,alt:"500–1,969 m",rain:1700,protection:"Reserva de la Biosfera, ZEC",drive:4.5,towns:["Navia de Suarna","Cervantes","Vega de Espinareda","Candín"],notes:"Pallozas and stone houses in near-empty villages, often at low prices. Remote; winters are long."},
  {id:"courel",name:"Serra do Courel",prov:"Lugo",type:"Oak & chestnut",species:"Devesas de roble, castaño, tejo, acebo",density:5,fire:50,areaHa:21000,alt:"400–1,640 m",rain:1500,protection:"Geoparque UNESCO, ZEC",drive:5,towns:["Folgoso do Courel","Seoane","Quiroga"],notes:"Devesa da Rogueira is one of Galicia's densest forests. The 2022 fires burned part of the range; check the exact plot."},
- {id:"ordesa",name:"Ordesa y Monte Perdido",prov:"Huesca",type:"Beech–fir & pine",species:"Haya, abeto, pino silvestre, pino negro",density:4,fire:20,areaHa:15600,alt:"700–3,355 m",rain:1800,protection:"Parque Nacional",drive:5,towns:["Torla","Broto","Fanlo","Bielsa"],notes:"Old bordas in the Broto and Sobrarbe valleys are the usual route. High prices near Torla."},
+ {id:"ordesa",name:"Ordesa y Monte Perdido",prov:"Huesca",type:"Beech–fir & pine",species:"Haya, abeto, pino silvestre, pino negro",density:4,fire:20,areaHa:15600,alt:"700–3,355 m",rain:1800,protection:"Parque Nacional",drive:5,towns:["Torla","Broto","Fanlo","Bielsa","Biescas"],notes:"Old bordas in the Broto and Sobrarbe valleys are the usual route. High prices near Torla."},
  {id:"urbion",name:"Pinares de Urbión",prov:"Soria",type:"Scots pine",species:"Pino silvestre, rebollo, haya in pockets",density:4,fire:35,areaHa:100000,alt:"1,000–2,200 m",rain:900,protection:"Parque Natural Laguna Negra + montes públicos",drive:2.5,towns:["Covaleda","Duruelo de la Sierra","Vinuesa","Quintanar de la Sierra"],notes:"One of Europe's largest continuous pine forests, well managed by the villages. Most forest is communal; buy a village house on its edge. Cold winters."},
  {id:"valsain",name:"Pinar de Valsaín",prov:"Segovia",type:"Scots pine",species:"Pino silvestre, roble melojo, acebo",density:4,fire:50,areaHa:10600,alt:"1,100–2,200 m",rain:1000,protection:"Parque Nacional Guadarrama",drive:1.2,towns:["Valsaín","La Granja","Navafría","El Espinar"],notes:"State-owned forest, so you buy in the villages around it. Closest dense forest to Madrid; prices reflect that."},
  {id:"montejo",name:"Hayedo de Montejo",prov:"Madrid",type:"Beech",species:"Haya, roble melojo, acebo",density:4,fire:40,areaHa:250,alt:"1,250–1,500 m",rain:900,protection:"UNESCO, Reserva Biosfera Sierra del Rincón",drive:1.3,towns:["Montejo de la Sierra","La Hiruela","Horcajuelo de la Sierra","Prádena del Rincón"],notes:"Small beech wood, but the Sierra del Rincón around it has oak forest and cheap-ish stone houses."},
  {id:"tejera",name:"Tejera Negra",prov:"Guadalajara",type:"Beech & pine",species:"Haya, roble, pino silvestre",density:4,fire:45,areaHa:1600,alt:"1,200–2,000 m",rain:900,protection:"Parque Natural Sierra Norte",drive:2,towns:["Cantalojas","Majaelrayo","Valverde de los Arroyos","Campillo de Ranas"],notes:"Pueblos de arquitectura negra. Very low population, stone houses for renovation appear regularly."},
  {id:"francia",name:"Sierra de Francia",prov:"Salamanca",type:"Chestnut & oak",species:"Castaño, roble melojo, madroño, alcornoque",density:4,fire:55,areaHa:32300,alt:"400–1,723 m",rain:1000,protection:"Parque Natural Las Batuecas",drive:3,towns:["La Alberca","Mogarraz","Miranda del Castañar","Sotoserrano"],notes:"Terraced chestnut and oak slopes with vineyards. Mild; some fire risk on the south side."},
+ {id:"iruelas",name:"Valle de Iruelas",prov:"Ávila",type:"Pine & chestnut",species:"Pino resinero, pino silvestre, castaño (Castañar de El Tiemblo), roble",density:4,fire:60,areaHa:8800,alt:"700–1,900 m",rain:800,protection:"Reserva Natural",drive:1.2,towns:["El Tiemblo","Navaluenga","El Barraco","Las Navas del Marqués"],notes:"Closest dense chestnut and pine forest to Madrid. Hot, dry summers; fire risk is moderate to high."},
+ {id:"ambroz",name:"Valle del Ambroz",prov:"Cáceres",type:"Chestnut & oak",species:"Castaño, roble melojo, aliso along rivers",density:4,fire:50,areaHa:null,alt:"600–2,000 m",rain:1100,protection:"Red Natura 2000 (part)",drive:2.5,towns:["Hervás","Baños de Montemayor","La Garganta","Segura de Toro"],notes:"Hervás chestnut woods are some of the best in Spain. Good-value stone houses."},
  {id:"tietar",name:"Valle del Tiétar",prov:"Ávila",type:"Pine & chestnut",species:"Pino resinero, pino laricio, castaño, roble",density:3,fire:70,areaHa:86000,alt:"400–2,592 m",rain:1200,protection:"Parque Regional Sierra de Gredos (part), ZEPA",drive:2,towns:["Arenas de San Pedro","Candeleda","Piedralaves","El Arenal"],notes:"Green and close to Madrid, but pine-dominated with hot summers. Several large fires in recent decades."},
+ {id:"guilleries",name:"Les Guilleries",prov:"Girona",type:"Oak & chestnut",species:"Roble, castaño, haya, encina",density:4,fire:45,areaHa:null,alt:"400–1,200 m",rain:900,protection:"PEIN Guilleries-Savassona",drive:6.5,towns:["Sant Hilari Sacalm","Osor","Espinelves","Susqueda"],notes:"Among the most forested municipalities in Catalonia. Masías for renovation, cheaper than Montseny."},
+ {id:"montnegre",name:"Montnegre i el Corredor",prov:"Barcelona",type:"Cork oak & mixed",species:"Alcornoque, encina, castaño, pino",density:4,fire:60,areaHa:15000,alt:"0–773 m",rain:700,protection:"Parque Natural",drive:6.5,towns:["Vallgorguina","Arenys de Munt","Sant Celoni","Dosrius"],notes:"Coastal range 45 min from Barcelona. Dense but Mediterranean, so summer fire risk is real."},
  {id:"montseny",name:"Montseny",prov:"Barcelona",type:"Beech & holm oak",species:"Haya, encina, abeto, alcornoque",density:4,fire:55,areaHa:31000,alt:"200–1,706 m",rain:1000,protection:"Parque Natural, Biosfera",drive:6.5,towns:["Viladrau","Montseny","Arbúcies","Seva"],notes:"Masías surrounded by forest, close to Barcelona and Girona. High prices, strict park rules."},
  {id:"garrotxa",name:"La Garrotxa",prov:"Girona",type:"Beech & oak",species:"Haya (Fageda d'en Jordà), roble, encina",density:4,fire:35,areaHa:15000,alt:"200–1,100 m",rain:1000,protection:"Parque Natural Zona Volcànica",drive:7,towns:["Olot","Santa Pau","Les Planes d'Hostoles","Sant Feliu de Pallerols"],notes:"Wet volcanic valleys with beech on lava. Masías to restore appear, but demand is high."},
- {id:"cazorla",name:"Sierras de Cazorla y Segura",prov:"Jaén",type:"Pine",species:"Pino laricio, pino carrasco, pino negral",density:4,fire:70,areaHa:209900,alt:"460–2,107 m",rain:900,protection:"Parque Natural, Biosfera",drive:4,towns:["Cazorla","Santiago de la Espada","Hornos","Pontones"],notes:"Spain's largest protected area. Dense pine but Mediterranean summers; the 2017 and 2022 seasons had large fires nearby."},
+ {id:"cazorla",name:"Sierras de Cazorla y Segura",prov:"Jaén",type:"Pine",species:"Pino laricio, pino carrasco, pino negral",density:4,fire:70,areaHa:209900,alt:"460–2,107 m",rain:900,protection:"Parque Natural, Biosfera",drive:4,towns:["Cazorla","Santiago de la Espada","Hornos","Siles","Riópar"],notes:"Spain's largest protected area. Dense pine but Mediterranean summers; the 2017 and 2022 seasons had large fires nearby."},
  {id:"aracena",name:"Sierra de Aracena",prov:"Huelva",type:"Chestnut & cork oak",species:"Castaño, alcornoque, encina, quejigo",density:3,fire:65,areaHa:186800,alt:"200–960 m",rain:1000,protection:"Parque Natural, Biosfera",drive:5,towns:["Aracena","Alájar","Castaño del Robledo","Galaroza"],notes:"Wetter than the rest of Andalucía. Chestnut groves with houses are a classic buy. More dehesa than closed forest."},
  {id:"alcornocales",name:"Los Alcornocales",prov:"Cádiz",type:"Cork oak",species:"Alcornoque, quejigo; laurel and ferns in the canutos",density:4,fire:65,areaHa:167800,alt:"0–1,092 m",rain:1000,protection:"Parque Natural",drive:6.5,towns:["Jimena de la Frontera","Alcalá de los Gazules","Castellar","Cortes de la Frontera"],notes:"Largest cork oak forest in Europe. Big estates dominate; small fincas with cortijos come up around Jimena."},
  {id:"espadan",name:"Serra d'Espadà",prov:"Castellón",type:"Cork oak & pine",species:"Alcornoque, pino rodeno, encina",density:3,fire:80,areaHa:31200,alt:"100–1,106 m",rain:600,protection:"Parque Natural",drive:4,towns:["Eslida","Aín","Almedíjar","Chóvar"],notes:"Only large cork forest in eastern Spain. Dry and fire-prone; high risk for a forest home."},
+ {id:"tramuntana",name:"Serra de Tramuntana",prov:"Mallorca",type:"Pine & holm oak",species:"Pino carrasco, encina, olive terraces",density:3,fire:60,areaHa:62000,alt:"0–1,445 m",rain:900,protection:"Paraje Natural, UNESCO",drive:null,towns:["Esporles","Valldemossa","Bunyola","Sóller"],notes:"Holm oak woods around Esporles are among the densest in the Balearics. Very high prices and strict rules."},
+ {id:"taburiente",name:"Caldera de Taburiente",prov:"La Palma",type:"Canary pine",species:"Pino canario, fayal-brezal, laurisilva on the north side",density:4,fire:55,areaHa:4700,alt:"430–2,426 m",rain:700,protection:"Parque Nacional",drive:null,towns:["El Paso","Los Llanos de Aridane","Tijarafe","Puntagorda"],notes:"Canary pine resprouts after fire, but the island has had repeated large fires. El Paso is the gateway town."},
  {id:"garajonay",name:"Garajonay",prov:"Santa Cruz de Tenerife",type:"Laurel forest",species:"Laurisilva: laurel, til, viñátigo, brezo",density:5,fire:50,areaHa:4000,alt:"650–1,487 m",rain:900,protection:"Parque Nacional, UNESCO",drive:null,towns:["Hermigua","Vallehermoso","Agulo","Alajeró"],notes:"Fog-fed relict forest on La Gomera. The 2012 fire burned a large part. Farmhouses in Hermigua and Vallehermoso valleys."}
 ];
 
 // Example rows only. They illustrate the scoring and point to live searches, not real ads.
+// Real ads the user has found. Merged into saved lists once, by id.
+const SEED_PROPS = [
+ {id:"pilona-esteli",title:"Aldea Esteli · 4 parcels with forest",url:"",forest:"redes",town:"Piloña (Aldea Esteli)",price:60000,area:0.6724,fpct:47,ftype:"Described as bosque",density:3,fire:null,house:"none",land:"urbano",status:"new",m2:null,water:0,power:0,road:0,net:"unknown",
+  notes:"Parcels of 1,080 m² and 2,476 m² (finca) plus 803 m² and 2,365 m² described as forest. Listed as urbano residencial. Ask which parcels allow a house and whether they are contiguous.",source:"ChatGPT 'Bosque y casa' app, 27/09/2026. Ad link not yet added."}
+];
 const EXAMPLE_PROPS = [
  {id:"ex1",example:true,title:"Example · Stone house to renovate with oak wood",url:"",forest:"somiedo",town:"Teverga",price:95000,area:3.2,fpct:75,ftype:"Robledal y castaños",density:4,fire:null,house:"renovate",m2:140,water:1,power:1,road:0,net:"4g",notes:"Example row. Replace with a real ad."},
  {id:"ex2",example:true,title:"Example · Borda with pine and beech",url:"",forest:"ordesa",town:"Broto",price:210000,area:1.5,fpct:60,ftype:"Pino silvestre y haya",density:3,fire:null,house:"ruin",m2:90,water:1,power:0,road:1,net:"unknown",notes:"Example row."},
@@ -319,6 +360,11 @@ const byId = Object.fromEntries(FORESTS.map(f => [f.id, f]));
 const DENS_LBL = ["","scattered","open","medium","dense","closed canopy"];
 const HOUSE_LBL = {habitable:"Habitable",renovate:"To renovate",ruin:"Ruin",none:"None"};
 const HOUSE_PTS = {habitable:15,renovate:12,ruin:8,none:0};
+const LAND_LBL = {urbano:"Suelo urbano",nucleo:"Núcleo rural",rustico:"Suelo rústico",unknown:"Land class unknown"};
+const STATUS_LBL = {new:"To review",contacted:"Contacted",visited:"Visited",discarded:"Discarded"};
+const CHECKS = [["cert","Certificado urbanístico"],["nota","Nota simple"],["catastro","Catastro checked"],["fire","Fire history checked"],["water","Water rights"],["visit","Visited in person"]];
+// An existing house counts in full; bare land counts only where a new house is normally allowed.
+const buildPts = p => p.house!=="none" ? HOUSE_PTS[p.house]||0 : (p.land==="urbano"||p.land==="nucleo") ? 10 : 0;
 
 function store(key, val){ try{ if(val===undefined) return JSON.parse(localStorage.getItem(key)); localStorage.setItem(key, JSON.stringify(val)); }catch(e){ return null; } }
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2200); }
@@ -361,13 +407,13 @@ function renderForests(){
   $("#forest-table tbody").innerHTML = rows.map(f => `
     <tr class="row" data-id="${f.id}" tabindex="0">
       <td><b>${esc(f.name)}</b><div class="sub">${esc(f.prov)}</div></td>
-      <td>${esc(f.type)}</td>
-      <td>${meter(f.density)}<div class="sub">${DENS_LBL[f.density]}</div></td>
-      <td>${riskPill(f.fire)}</td>
-      <td class="num">${fmt(f.areaHa)}</td>
-      <td class="num">${fmt(f.rain)}</td>
-      <td class="num">${f.drive==null?"island":f.drive+" h"}</td>
-      <td>${esc(f.protection)}</td>
+      <td data-l="Type">${esc(f.type)}</td>
+      <td data-l="Density">${meter(f.density)}<div class="sub">${DENS_LBL[f.density]}</div></td>
+      <td data-l="Fire risk">${riskPill(f.fire)}</td>
+      <td class="num" data-l="Area (ha)">${fmt(f.areaHa)}</td>
+      <td class="num" data-l="Rain mm/yr">${fmt(f.rain)}</td>
+      <td class="num" data-l="From Madrid">${f.drive==null?"island":f.drive+" h"}</td>
+      <td data-l="Protection">${esc(f.protection)}</td>
     </tr>${openForest===f.id ? forestDetail(f) : ""}`).join("") || `<tr><td colspan="8">No forests match. Loosen a filter.</td></tr>`;
   markSort("#forest-table", fSort);
 }
@@ -403,13 +449,20 @@ bindSort("#forest-table", fSort, renderForests);
 
 // ---- Properties ----
 let pSort = {k:"score",dir:"desc"}, editing = null;
-function props(){ const s = store("mf-props"); return Array.isArray(s) ? s : EXAMPLE_PROPS.slice(); }
+function props(){ const s = store("mf-props"); return Array.isArray(s) ? s : SEED_PROPS.concat(EXAMPLE_PROPS); }
+(function mergeSeeds(){
+  const seen = store("mf-seeds") || [], list = store("mf-props");
+  if(!Array.isArray(list)) return;
+  const add = SEED_PROPS.filter(p => !seen.includes(p.id) && !list.some(x => x.id===p.id));
+  if(add.length){ saveProps(list.concat(add)); }
+  store("mf-seeds", SEED_PROPS.map(p=>p.id));
+})();
 function saveProps(list){ store("mf-props", list); }
 function enrich(p){
   const f = byId[p.forest];
   const fire = p.fire ?? f?.fire ?? 50;
   const forestHa = p.area * p.fpct/100;
-  const score = Math.round(p.fpct/100*30 + p.density/5*20 + (100-fire)/100*20 + (HOUSE_PTS[p.house]||0) + 5*(+p.water) + 5*(+p.power) + 5*(+p.road));
+  const score = Math.round(p.fpct/100*30 + p.density/5*20 + (100-fire)/100*20 + buildPts(p) + 5*(+p.water) + 5*(+p.power) + 5*(+p.road));
   return {...p, fire, forestHa, eurPerForestHa: forestHa>0 ? Math.round(p.price/forestHa) : null, score, services: +p.water + +p.power + +p.road};
 }
 FORESTS.forEach(f => {
@@ -425,26 +478,31 @@ function renderProps(){
   $("#prop-table tbody").innerHTML = rows.map(p => {
     const f = byId[p.forest];
     const svc = [p.water?"water":null,p.power?"power":null,p.road?"road":null].filter(Boolean);
-    return `<tr>
+    const checks = p.checks||{};
+    const done = CHECKS.filter(([k])=>checks[k]).length;
+    return `<tr class="${p.status==="discarded"?"discarded":""}">
       <td class="score">${p.score}</td>
       <td>${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--moss);font-weight:600">${esc(p.title)} ↗</a>` : `<b>${esc(p.title)}</b>`}${p.example?'<span class="example">EXAMPLE</span>':""}
         <div class="sub">${esc(p.town||"")}${f?` · near ${esc(f.name)}`:""}${p.ftype?` · ${esc(p.ftype)}`:""}</div>
-        ${p.notes?`<div class="sub">${esc(p.notes)}</div>`:""}</td>
-      <td class="num">€${fmt(p.price)}</td>
-      <td class="num">${fmt(p.area)} ha${p.m2?`<div class="sub">${fmt(p.m2)} m² built</div>`:""}</td>
-      <td class="num">${p.fpct}%<div class="bar"><b style="width:${p.fpct}%"></b></div><div class="sub">${fmt(Math.round(p.forestHa*100)/100)} ha</div></td>
-      <td class="num">${p.eurPerForestHa?"€"+fmt(p.eurPerForestHa):"–"}</td>
-      <td>${meter(p.density)}</td>
-      <td>${riskPill(p.fire)}</td>
-      <td>${HOUSE_LBL[p.house]||"–"}</td>
-      <td>${svc.map(s=>`<span class="tag">${s}</span>`).join("")||'<span class="sub">none known</span>'}${p.net&&p.net!=="unknown"?`<span class="tag">${p.net}</span>`:""}</td>
+        ${p.notes?`<div class="sub">${esc(p.notes)}</div>`:""}
+        ${p.source?`<div class="src">Source: ${esc(p.source)}</div>`:""}
+        <div class="checks" data-pid="${p.id}"><span class="status ${p.status||"new"}">${STATUS_LBL[p.status||"new"]}</span><span class="sub">${done}/${CHECKS.length} checks</span>
+          ${CHECKS.map(([k,l])=>`<label class="${checks[k]?"done":""}"><input type="checkbox" data-check="${k}" ${checks[k]?"checked":""}>${l}</label>`).join("")}</div></td>
+      <td class="num" data-l="Price">€${fmt(p.price)}</td>
+      <td class="num" data-l="Land">${fmt(p.area)} ha${p.m2?`<div class="sub">${fmt(p.m2)} m² built</div>`:""}</td>
+      <td class="num" data-l="Forest">${p.fpct}%<div class="bar"><b style="width:${p.fpct}%"></b></div><div class="sub">${fmt(Math.round(p.forestHa*100)/100)} ha</div></td>
+      <td class="num" data-l="€ / forest ha">${p.eurPerForestHa?"€"+fmt(p.eurPerForestHa):"–"}</td>
+      <td data-l="Density">${meter(p.density)}</td>
+      <td data-l="Fire risk">${riskPill(p.fire)}</td>
+      <td data-l="Building & land">${HOUSE_LBL[p.house]||"–"}<div class="sub">${LAND_LBL[p.land||"unknown"]}</div></td>
+      <td data-l="Services">${svc.map(s=>`<span class="tag">${s}</span>`).join("")||'<span class="sub">none known</span>'}${p.net&&p.net!=="unknown"?`<span class="tag">${p.net}</span>`:""}</td>
       <td style="white-space:nowrap"><button class="btn small ghost" data-edit="${p.id}" type="button">Edit</button> <button class="btn small ghost" data-del="${p.id}" type="button">Delete</button></td>
     </tr>`;}).join("") || `<tr><td colspan="11">No properties yet. Open a forest in the Forests tab, use its search links, and add the ads you like here.</td></tr>`;
   markSort("#prop-table", pSort);
 }
 bindSort("#prop-table", pSort, renderProps);
 
-const FIELDS = ["title","url","forest","town","price","area","fpct","ftype","dens","fire","house","m2","water","power","road","net","notes"];
+const FIELDS = ["title","url","forest","town","price","area","fpct","ftype","dens","fire","house","land","status","m2","water","power","road","net","notes"];
 function openForm(p){
   editing = p?.id || null;
   $("#p-form-title").textContent = p ? "Edit property" : "Add a property";
@@ -459,10 +517,15 @@ $("#p-form").addEventListener("submit", e => {
   e.preventDefault();
   const v = id => $("#pf-"+id).value.trim(), n = id => v(id)==="" ? null : +v(id);
   const rec = {id: editing || "p"+Date.now(), title:v("title"), url:v("url"), forest:v("forest"), town:v("town"), price:n("price"), area:n("area"), fpct:n("fpct"),
-    ftype:v("ftype"), density:+v("dens"), fire:n("fire"), house:v("house"), m2:n("m2"), water:+v("water"), power:+v("power"), road:+v("road"), net:v("net"), notes:v("notes")};
+    ftype:v("ftype"), density:+v("dens"), fire:n("fire"), house:v("house"), land:v("land"), status:v("status"), m2:n("m2"), water:+v("water"), power:+v("power"), road:+v("road"), net:v("net"), notes:v("notes")};
   const list = props(); const i = list.findIndex(p=>p.id===rec.id);
-  if(i>=0) list[i]=rec; else list.push(rec);
+  if(i>=0) list[i]={...list[i], ...rec}; else list.push(rec);
   saveProps(list); $("#p-form-panel").hidden=true; editing=null; renderProps(); renderForests(); toast("Property saved");
+});
+$("#prop-table tbody").addEventListener("change", e => {
+  const cb = e.target.closest("[data-check]"); if(!cb) return;
+  const pid = cb.closest("[data-pid]").dataset.pid, list = props(), p = list.find(x=>x.id===pid);
+  p.checks = {...(p.checks||{}), [cb.dataset.check]: cb.checked}; saveProps(list); renderProps();
 });
 $("#prop-table tbody").addEventListener("click", e => {
   const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
