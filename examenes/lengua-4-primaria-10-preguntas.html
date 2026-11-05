@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Examen de Lengua · 4.º de Primaria</title>
+<style>
+:root{--ink:#17243b;--muted:#57647b;--blue:#2756c7;--line:#e0e7f3;--wash:#f5f7fc;--good:#146c44;--bad:#aa3347}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--wash);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);line-height:1.55}
+main{max-width:760px;margin:auto;padding:24px 16px 60px}
+header{background:linear-gradient(125deg,#1d3c92,#316ad1);color:white;border-radius:22px;padding:30px 26px;box-shadow:0 10px 28px #172d641c}
+.eyebrow{font-weight:700;font-size:.78rem;letter-spacing:.13em;text-transform:uppercase;color:#dce7ff}
+h1{font-size:clamp(1.7rem,5vw,2.45rem);line-height:1.15;margin:10px 0}
+header p{margin:0;color:#edf3ff}.meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.meta span{padding:5px 12px;border:1px solid #a8bef785;border-radius:25px;font-size:.84rem;font-weight:600}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:24px 2px 14px;font-size:.92rem;color:var(--muted)}
+.track{height:8px;background:#dfe5f1;border-radius:8px;overflow:hidden;margin-bottom:22px}.bar{height:100%;width:0;background:var(--blue);transition:width .2s}
+.question{background:white;border:1px solid var(--line);border-radius:16px;padding:22px;margin:14px 0;box-shadow:0 3px 13px #101e3a08}
+.qtop{display:flex;gap:10px;justify-content:space-between;color:#52617b;font-size:.77rem;font-weight:700;letter-spacing:.02em}
+h2{font-size:1.07rem;line-height:1.4;margin:12px 0 17px}
+.choices{display:grid;gap:9px}
+label.choice{cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid #dae2f1;border-radius:11px;background:white;transition:background .15s,border .15s}
+label.choice:has(input:checked){background:#eef4ff;border-color:#5882e5}
+label.choice:focus-within{outline:2px solid #6d95ee;outline-offset:2px}
+label.choice input{width:19px;height:19px;accent-color:var(--blue);margin:0;flex:none}
+.note{font-size:.78rem;color:var(--muted);margin:10px 0 0}
+.feedback{display:none;border-radius:10px;margin-top:14px;padding:12px 13px;font-size:.9rem}
+.question.correct .feedback{display:block;background:#e9f7ef;color:var(--good)}
+.question.incorrect .feedback{display:block;background:#fff0f1;color:var(--bad)}
+.question.incorrect{border-color:#eab8c0}.question.correct{border-color:#a6dcc0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+button{font:inherit;font-weight:750;border-radius:12px;padding:14px 18px;cursor:pointer}
+#check{background:var(--blue);color:#fff;border:0;flex:1;min-width:190px}
+#reset{background:white;color:var(--ink);border:1px solid #c9d3e5}
+button:hover{filter:brightness(.96)}button:focus-visible{outline:3px solid #91aff4;outline-offset:3px}
+#result{display:none;margin-top:24px;padding:24px;border-radius:17px;border:2px solid #b5c9ed;background:#eaf0ff}
+.score{font-size:2.4rem;font-weight:850;line-height:1.2;color:#1b409d}#result p{margin:10px 0 0}
+footer{margin-top:30px;color:#748098;font-size:.8rem;text-align:center}
+@media(max-width:500px){main{padding:12px 12px 40px}header{padding:24px 20px}.question{padding:18px 14px}.meta{gap:6px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="eyebrow">Repaso para el control</div><h1>Examen de Lengua</h1><p>4.º de Primaria · 10 preguntas</p><div class="meta"><span>Ortografía y acentuación</span><span>Comunicación</span><span>Formación de palabras</span></div></header>
+<div class="toolbar"><span>Marca la respuesta correcta de cada pregunta.</span><strong id="counter" aria-live="polite">0/10 contestadas</strong></div>
+<div class="track" aria-hidden="true"><div class="bar" id="bar"></div></div>
+<form id="quiz" novalidate><div id="questions"></div>
+<div class="actions"><button type="submit" id="check">Corregir examen</button><button type="button" id="reset">Repetir examen</button></div>
+</form>
+<section id="result" aria-live="polite" tabindex="-1"><div class="score" id="score"></div><p id="summary"></p></section>
+<footer>Examen de práctica. Las respuestas se comprueban en este dispositivo. No se envían datos.</footer>
+</main>
+<script>
+"use strict";
+const data=[{"theme":"Agudas","q":"¿Cuál de estas palabras es aguda?","options":["Lápiz","Camión","Música","Árbol"],"correct":[1],"explain":"Camión se divide ca-mión. La sílaba fuerte es la última. Por eso es aguda."},{"theme":"Llanas","q":"¿Cuál de estas palabras es llana?","options":["Teléfono","Ratón","Mesa","Café"],"correct":[2],"explain":"Mesa se divide me-sa. La sílaba fuerte es la penúltima. Por eso es llana."},{"theme":"Esdrújulas","q":"¿Cuál de estas palabras es esdrújula?","options":["Brújula","Ventana","Papel","Azúcar"],"correct":[0],"explain":"Brújula se divide brú-ju-la. La sílaba fuerte es la antepenúltima. Por eso es esdrújula."},{"theme":"Comunicación no verbal","q":"Una niña levanta el pulgar para indicar que todo está bien, sin decir nada. ¿Qué tipo de comunicación usa?","options":["Verbal oral","Verbal escrita","Verbal oral y escrita","No verbal"],"correct":[3],"explain":"Un gesto transmite información sin usar palabras. Eso es comunicación no verbal."},{"theme":"Emisor","q":"La profesora dice: «Sacad el libro de Lengua». ¿Quién es el emisor?","options":["Los alumnos","La profesora","El libro de Lengua","El aula"],"correct":[1],"explain":"El emisor es quien transmite el mensaje. En este caso, la profesora."},{"theme":"Canal","q":"Luis envía a Ana un mensaje de texto por el móvil: «Nos vemos mañana». ¿Cuál es el canal?","options":["Luis","Ana","El móvil y la red por la que llega el mensaje","La frase «Nos vemos mañana»"],"correct":[2],"explain":"El canal es el medio por el que llega el mensaje. Aquí se transmite por el móvil y la red."},{"theme":"Palabras compuestas","q":"Selecciona TODAS las palabras compuestas.","options":["Sacapuntas","Paraguas","Panadero","Abrelatas"],"correct":[0,1,3],"explain":"Sacapuntas, paraguas y abrelatas se forman al unir palabras. Panadero es derivada de pan, con el sufijo -ero."},{"theme":"Palabras derivadas","q":"¿Cuál de estas palabras es derivada de «flor»?","options":["Florero","Árbol","Maceta","Jardín"],"correct":[0],"explain":"Florero se forma con flor + -ero. Las otras palabras pueden relacionarse con flores, pero no derivan de flor."},{"theme":"Diminutivos","q":"«Casita» es un diminutivo de «casa». ¿Verdadero o falso?","options":["Verdadero","Falso"],"correct":[0],"explain":"Verdadero. Casita lleva el sufijo -ita, que puede expresar tamaño pequeño o cariño."},{"theme":"Aumentativos","q":"«Perrazo» es un diminutivo de «perro». ¿Verdadero o falso?","options":["Verdadero","Falso"],"correct":[1],"explain":"Falso. Perrazo es un aumentativo. El sufijo -azo puede expresar gran tamaño o intensidad."}];
+const letters=["A","B","C","D"];
+const holder=document.getElementById("questions");
+const form=document.getElementById("quiz");
+let graded=false;
+function make(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;}
+function render(){
+  holder.replaceChildren();
+  data.forEach((item,i)=>{
+    const card=make("section","question");
+    const top=make("div","qtop");top.append(make("span","", "PREGUNTA "+(i+1)+" / 10"),make("span","",item.theme));card.append(top);
+    card.append(make("h2","",item.q));
+    const group=make("div","choices");
+    item.options.forEach((option,j)=>{
+      const label=make("label","choice");
+      const input=document.createElement("input");input.type=item.correct.length>1?"checkbox":"radio";input.name="q"+i;input.value=String(j);input.setAttribute("aria-label",option);
+      label.append(input,make("span","",letters[j]+".  "+option));group.append(label);
+    });
+    card.append(group);
+    if(item.correct.length>1)card.append(make("p","note","Puedes marcar varias respuestas."));
+    const fb=make("div","feedback");fb.setAttribute("aria-live","polite");card.append(fb);
+    holder.append(card);
+  });
+  graded=false;document.getElementById("result").style.display="none";document.getElementById("check").disabled=false;document.getElementById("check").textContent="Corregir examen";
+  document.querySelectorAll(".question").forEach(c=>c.classList.remove("correct","incorrect"));
+  update();
+}
+function chosen(i){return [...document.querySelectorAll('input[name="q'+i+'"]:checked')].map(el=>Number(el.value)).sort((a,b)=>a-b);}
+function update(){const answered=data.reduce((acc,_,i)=>acc+(chosen(i).length>0?1:0),0);document.getElementById("counter").textContent=answered+"/10 contestadas";document.getElementById("bar").style.width=(answered*10)+"%";}
+holder.addEventListener("change",()=>{if(!graded)update();});
+form.addEventListener("submit",e=>{
+ e.preventDefault();if(graded)return;
+ const firstMissing=data.findIndex((_,i)=>chosen(i).length===0);
+ if(firstMissing!==-1){alert("Faltan preguntas por responder. Revisa la pregunta "+(firstMissing+1)+".");document.querySelectorAll(".question")[firstMissing].scrollIntoView({behavior:"smooth",block:"center"});return;}
+ let points=0;
+ [...document.querySelectorAll(".question")].forEach((card,i)=>{
+  const item=data[i],choice=chosen(i),isCorrect=JSON.stringify(choice)===JSON.stringify([...item.correct].sort((a,b)=>a-b));
+  if(isCorrect)points++;
+  card.classList.add(isCorrect?"correct":"incorrect");
+  const correctText=item.correct.map(j=>item.options[j]).join(", ");
+  card.querySelector(".feedback").textContent=(isCorrect?"✓ ¡Bien! ":"✗ Respuesta correcta: "+correctText+". ")+item.explain;
+  card.querySelectorAll("input").forEach(el=>el.disabled=true);
+ });
+ graded=true;
+ const result=document.getElementById("result");result.style.display="block";
+ document.getElementById("score").textContent=points+"/10";
+ document.getElementById("summary").textContent=points===10?"¡Enhorabuena! Has acertado las diez preguntas.":points>=7?"Buen trabajo. Revisa las explicaciones de las preguntas que has fallado.":"Repasa las explicaciones y vuelve a intentarlo.";
+ document.getElementById("check").disabled=true;
+ result.scrollIntoView({behavior:"smooth",block:"center"});result.focus({preventScroll:true});
+});
+document.getElementById("reset").addEventListener("click",()=>{form.reset();render();window.scrollTo({top:0,behavior:"smooth"});});
+render();
+</script>
+</body></html>
