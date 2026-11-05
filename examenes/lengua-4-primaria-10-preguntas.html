@@ -28,7 +28,7 @@ label.choice input{width:19px;height:19px;accent-color:var(--blue);margin:0;flex
 .feedback{display:none;border-radius:10px;margin-top:14px;padding:12px 13px;font-size:.9rem}
 .question.correct .feedback{display:block;background:#e9f7ef;color:var(--good)}
 .question.incorrect .feedback{display:block;background:#fff0f1;color:var(--bad)}
-.question.incorrect{border-color:#eab8c0}.question.correct{border-color:#a6dcc0}
+.question.incorrect{border-color:#eab8c0}.question.partial{border-color:#edd398}.question.partial .feedback{display:block;background:#fff5db;color:#926117}.question.correct{border-color:#a6dcc0}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
 button{font:inherit;font-weight:750;border-radius:12px;padding:14px 18px;cursor:pointer}
 #check{background:var(--blue);color:#fff;border:0;flex:1;min-width:190px}
@@ -42,18 +42,18 @@ footer{margin-top:30px;color:#748098;font-size:.8rem;text-align:center}
 </head>
 <body>
 <main>
-<header><div class="eyebrow">Repaso para el control</div><h1>Examen de Lengua</h1><p>4.º de Primaria · 10 preguntas</p><div class="meta"><span>Ortografía y acentuación</span><span>Comunicación</span><span>Formación de palabras</span></div></header>
-<div class="toolbar"><span>Marca la respuesta correcta de cada pregunta.</span><strong id="counter" aria-live="polite">0/10 contestadas</strong></div>
+<header><div class="eyebrow">Repaso para el control</div><h1>Examen de Lengua</h1><p>4.º de Primaria · 10 preguntas · Nivel intermedio</p><div class="meta"><span>Ortografía y acentuación</span><span>Comunicación</span><span>Formación de palabras</span></div></header>
+<div class="toolbar"><span>Selecciona todas las respuestas correctas.</span><strong id="counter" aria-live="polite">0/10 contestadas</strong></div>
 <div class="track" aria-hidden="true"><div class="bar" id="bar"></div></div>
 <form id="quiz" novalidate><div id="questions"></div>
 <div class="actions"><button type="submit" id="check">Corregir examen</button><button type="button" id="reset">Repetir examen</button></div>
 </form>
 <section id="result" aria-live="polite" tabindex="-1"><div class="score" id="score"></div><p id="summary"></p></section>
-<footer>Examen de práctica. Las respuestas se comprueban en este dispositivo. No se envían datos.</footer>
+<footer>Examen de práctica. Cada pregunta vale hasta 1 punto. Las opciones incorrectas restan dentro de cada pregunta. No se envían datos.</footer>
 </main>
 <script>
 "use strict";
-const data=[{"theme":"Agudas","q":"¿Cuál de estas palabras es aguda?","options":["Lápiz","Camión","Música","Árbol"],"correct":[1],"explain":"Camión se divide ca-mión. La sílaba fuerte es la última. Por eso es aguda."},{"theme":"Llanas","q":"¿Cuál de estas palabras es llana?","options":["Teléfono","Ratón","Mesa","Café"],"correct":[2],"explain":"Mesa se divide me-sa. La sílaba fuerte es la penúltima. Por eso es llana."},{"theme":"Esdrújulas","q":"¿Cuál de estas palabras es esdrújula?","options":["Brújula","Ventana","Papel","Azúcar"],"correct":[0],"explain":"Brújula se divide brú-ju-la. La sílaba fuerte es la antepenúltima. Por eso es esdrújula."},{"theme":"Comunicación no verbal","q":"Una niña levanta el pulgar para indicar que todo está bien, sin decir nada. ¿Qué tipo de comunicación usa?","options":["Verbal oral","Verbal escrita","Verbal oral y escrita","No verbal"],"correct":[3],"explain":"Un gesto transmite información sin usar palabras. Eso es comunicación no verbal."},{"theme":"Emisor","q":"La profesora dice: «Sacad el libro de Lengua». ¿Quién es el emisor?","options":["Los alumnos","La profesora","El libro de Lengua","El aula"],"correct":[1],"explain":"El emisor es quien transmite el mensaje. En este caso, la profesora."},{"theme":"Canal","q":"Luis envía a Ana un mensaje de texto por el móvil: «Nos vemos mañana». ¿Cuál es el canal?","options":["Luis","Ana","El móvil y la red por la que llega el mensaje","La frase «Nos vemos mañana»"],"correct":[2],"explain":"El canal es el medio por el que llega el mensaje. Aquí se transmite por el móvil y la red."},{"theme":"Palabras compuestas","q":"Selecciona TODAS las palabras compuestas.","options":["Sacapuntas","Paraguas","Panadero","Abrelatas"],"correct":[0,1,3],"explain":"Sacapuntas, paraguas y abrelatas se forman al unir palabras. Panadero es derivada de pan, con el sufijo -ero."},{"theme":"Palabras derivadas","q":"¿Cuál de estas palabras es derivada de «flor»?","options":["Florero","Árbol","Maceta","Jardín"],"correct":[0],"explain":"Florero se forma con flor + -ero. Las otras palabras pueden relacionarse con flores, pero no derivan de flor."},{"theme":"Diminutivos","q":"«Casita» es un diminutivo de «casa». ¿Verdadero o falso?","options":["Verdadero","Falso"],"correct":[0],"explain":"Verdadero. Casita lleva el sufijo -ita, que puede expresar tamaño pequeño o cariño."},{"theme":"Aumentativos","q":"«Perrazo» es un diminutivo de «perro». ¿Verdadero o falso?","options":["Verdadero","Falso"],"correct":[1],"explain":"Falso. Perrazo es un aumentativo. El sufijo -azo puede expresar gran tamaño o intensidad."}];
+const data=[{"theme":"Palabras agudas","q":"Selecciona TODAS las palabras agudas.","options":["Camión","Lápiz","Sofá","Mesa"],"correct":[0,2],"explain":"Camión (ca-mión) y sofá (so-fá) tienen la fuerza en la última sílaba. Lápiz y mesa son llanas."},{"theme":"Palabras llanas","q":"Selecciona TODAS las palabras llanas. Recuerda que una palabra llana puede llevar tilde o no.","options":["Azúcar","Árbol","Teléfono","Joven"],"correct":[0,1,3],"explain":"Azúcar, árbol y joven tienen la fuerza en la penúltima sílaba. Teléfono es esdrújula."},{"theme":"Palabras esdrújulas","q":"Selecciona TODAS las palabras esdrújulas.","options":["Brújula","Difícil","Teléfono","Camión"],"correct":[0,2],"explain":"Brújula (brú-ju-la) y teléfono (te-lé-fo-no) tienen la fuerza en la antepenúltima sílaba. Difícil es llana y camión es aguda."},{"theme":"Clasificación y tildes","q":"Selecciona TODAS las afirmaciones correctas sobre estas palabras.","options":["«Café» es aguda y lleva tilde correctamente.","«Camión» es llana porque lleva tilde.","«Lápiz» es llana y lleva tilde correctamente.","«Papel» es aguda y debería llevar tilde."],"correct":[0,2],"explain":"Café es aguda y acaba en vocal; lápiz es llana y acaba en consonante distinta de n o s. Camión es aguda. Papel es aguda y acaba en l, por eso no lleva tilde."},{"theme":"Comunicación no verbal","q":"Selecciona TODAS las situaciones en las que se usa comunicación NO verbal.","options":["Un niño hace el gesto de silencio con un dedo.","Una niña escribe una nota a su amiga.","Un semáforo muestra la luz roja.","Un profesor dice en voz alta «Buenos días»."],"correct":[0,2],"explain":"Un gesto y la luz de un semáforo transmiten información sin palabras. Una nota escrita y una frase hablada son comunicación verbal."},{"theme":"Comunicación verbal","q":"Selecciona TODAS las situaciones que contienen comunicación verbal.","options":["Una niña escribe una carta.","Un alumno lee un cuento en voz alta.","Un padre habla por teléfono.","Un amigo responde solo con una sonrisa."],"correct":[0,1,2],"explain":"La comunicación verbal utiliza palabras, escritas o habladas. Una sonrisa sin palabras es comunicación no verbal."},{"theme":"Elementos de la comunicación","q":"Lucía envía a su padre por una aplicación del colegio este texto: «Mañana hay excursión». Selecciona TODAS las afirmaciones correctas.","options":["Lucía es la emisora.","Su padre es el receptor.","La frase «Mañana hay excursión» es el código.","La aplicación y la red forman parte del canal."],"correct":[0,1,3],"explain":"Lucía envía el mensaje y su padre lo recibe. La frase es el mensaje, no el código. El canal es el medio por el que se transmite."},{"theme":"Palabras compuestas","q":"Selecciona TODAS las palabras compuestas.","options":["Rompecabezas","Guardabosques","Florero","Abrelatas"],"correct":[0,1,3],"explain":"Rompecabezas, guardabosques y abrelatas se forman al unir palabras o bases. Florero deriva de flor con el sufijo -ero."},{"theme":"Palabras derivadas","q":"Selecciona TODAS las palabras derivadas.","options":["Panadería","Florecer","Paraguas","Zapatero"],"correct":[0,1,3],"explain":"Panadería deriva de pan, florecer de flor y zapatero de zapato. Paraguas es una palabra compuesta."},{"theme":"Diminutivos y aumentativos","q":"Selecciona TODAS las afirmaciones correctas.","options":["«Gatito» es un diminutivo de «gato».","«Caserón» es un aumentativo de «casa».","«Mesita» es un aumentativo de «mesa».","«Perrazo» es un diminutivo de «perro»."],"correct":[0,1],"explain":"Gatito y mesita son diminutivos. Caserón y perrazo son aumentativos. Las terminaciones pueden expresar tamaño, cariño o intensidad."}];
 const letters=["A","B","C","D"];
 const holder=document.getElementById("questions");
 const form=document.getElementById("quiz");
@@ -72,7 +72,7 @@ function render(){
       label.append(input,make("span","",letters[j]+".  "+option));group.append(label);
     });
     card.append(group);
-    if(item.correct.length>1)card.append(make("p","note","Puedes marcar varias respuestas."));
+    if(item.correct.length>1)card.append(make("p","note","Debes marcar todas las respuestas correctas. Una selección incompleta da puntos parciales."));
     const fb=make("div","feedback");fb.setAttribute("aria-live","polite");card.append(fb);
     holder.append(card);
   });
@@ -89,17 +89,23 @@ form.addEventListener("submit",e=>{
  if(firstMissing!==-1){alert("Faltan preguntas por responder. Revisa la pregunta "+(firstMissing+1)+".");document.querySelectorAll(".question")[firstMissing].scrollIntoView({behavior:"smooth",block:"center"});return;}
  let points=0;
  [...document.querySelectorAll(".question")].forEach((card,i)=>{
-  const item=data[i],choice=chosen(i),isCorrect=JSON.stringify(choice)===JSON.stringify([...item.correct].sort((a,b)=>a-b));
-  if(isCorrect)points++;
-  card.classList.add(isCorrect?"correct":"incorrect");
-  const correctText=item.correct.map(j=>item.options[j]).join(", ");
-  card.querySelector(".feedback").textContent=(isCorrect?"✓ ¡Bien! ":"✗ Respuesta correcta: "+correctText+". ")+item.explain;
+  const item=data[i],choice=chosen(i);
+  const hits=choice.filter(j=>item.correct.includes(j)).length;
+  const mistakes=choice.filter(j=>!item.correct.includes(j)).length;
+  const earned=Math.max(0,(hits-mistakes)/item.correct.length);
+  points+=earned;
+  const status=earned===1?"correct":earned>0?"partial":"incorrect";
+  card.classList.add(status);
+  const correctText=item.correct.map(j=>item.options[j]).join("; ");
+  const unit=earned.toFixed(2).replace(".",",");
+  card.querySelector(".feedback").textContent=(earned===1?"✓ Respuesta completa. ":earned>0?"◐ Respuesta parcial. ":"✗ No se han conseguido puntos. ")+"Puntos: "+unit+"/1. Respuestas correctas: "+correctText+". "+item.explain;
   card.querySelectorAll("input").forEach(el=>el.disabled=true);
  });
  graded=true;
  const result=document.getElementById("result");result.style.display="block";
- document.getElementById("score").textContent=points+"/10";
- document.getElementById("summary").textContent=points===10?"¡Enhorabuena! Has acertado las diez preguntas.":points>=7?"Buen trabajo. Revisa las explicaciones de las preguntas que has fallado.":"Repasa las explicaciones y vuelve a intentarlo.";
+ const score=Math.round(points*10)/10;
+ document.getElementById("score").textContent=score.toFixed(1).replace(".",",")+"/10";
+ document.getElementById("summary").textContent=points===10?"¡Muy bien! Has identificado todas las opciones correctas.":points>=7?"Buen trabajo. Revisa las respuestas parciales o incorrectas.":"Repasa las explicaciones y vuelve a intentarlo. Se restan aciertos por cada opción incorrecta marcada.";
  document.getElementById("check").disabled=true;
  result.scrollIntoView({behavior:"smooth",block:"center"});result.focus({preventScroll:true});
 });
